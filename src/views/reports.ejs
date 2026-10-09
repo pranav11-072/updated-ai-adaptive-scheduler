@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<h2>Reports and exports</h2>
+<div class="controls">
+  <form method="post" action="/reports/generate?<%= query %>"><button>Generate PDF report</button></form>
+  <a class="btn alt" href="/reports/download">Download PDF</a>
+  <a class="btn alt" href="/export/activities.csv?<%= query %>">Activities CSV</a>
+  <a class="btn alt" href="/export/recommendations.csv?<%= query %>">Recommendations CSV</a>
+  <a class="btn alt" href="/export/predictions.csv?<%= query %>">Predictions CSV</a>
+  <a class="btn alt" href="/export/resources.csv?<%= query %>">Resources CSV</a>
+</div>
+<% if (generated) { %><div class="banner">Report generated: <%= generated %></div><% } %>
+<h2>JSON API</h2>
+<ul>
+  <li><a href="/api/cycle?<%= query %>">GET /api/cycle</a> – full cycle result</li>
+  <li><a href="/api/gantt?<%= query %>">GET /api/gantt</a> – working-day offsets</li>
+  <li><a href="/api/activities?<%= query %>">GET /api/activities</a></li>
+  <li><a href="/api/recommendations?<%= query %>">GET /api/recommendations</a></li>
+</ul>
+<h2>Charts (generated with the PDF)</h2>
+<div class="grid g2">
+  <% ['gantt_chart','s_curve','risk_distribution','forecast_trend','resource_histogram','shap_global_importance'].forEach(function(n) { %>
+  <div class="card">
+    <b><%= n %></b><br>
+    <img class="fig" src="/figures/<%= n %>.png" alt="<%= n %>" onerror="this.replaceWith('not generated yet')">
+  </div>
+  <% }); %>
+</div>
+<%- include('partials/footer') %>

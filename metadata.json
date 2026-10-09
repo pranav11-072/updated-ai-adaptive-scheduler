@@ -1,0 +1,8 @@
+{
+  "name": "Adaptive Construction Scheduler",
+  "description": "AI-based self-adaptive construction scheduling system with CPM network analysis, delay prediction, and risk mitigation.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "permissions": []
+}

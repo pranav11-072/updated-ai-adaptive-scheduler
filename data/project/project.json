@@ -1,0 +1,75 @@
+{
+  "project_id": "CS-G3-001",
+  "name": "G+3 Residential Building (synthetic case study)",
+  "start_date": "2026-05-04",
+  "data_date": "2026-09-07",
+  "location": "Bengaluru, Karnataka, India (illustrative)",
+  "data_source": "SYNTHETIC",
+  "description": "Synthetic demonstration project. Progress and delays are scripted, not as-built records.",
+  "work_week": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "holidays": [
+    "2026-05-27",
+    "2026-08-15",
+    "2026-09-14",
+    "2026-10-02",
+    "2026-10-20",
+    "2026-11-09",
+    "2026-11-10",
+    "2026-12-25",
+    "2027-01-01",
+    "2027-01-26"
+  ],
+  "monsoon": {
+    "start": "06-01",
+    "end": "09-30"
+  },
+  "resources": {
+    "BARB": {
+      "name": "Bar benders",
+      "available": 12
+    },
+    "CARP": {
+      "name": "Carpenters",
+      "available": 14
+    },
+    "ELEC": {
+      "name": "Electricians",
+      "available": 8
+    },
+    "EXC": {
+      "name": "Excavators with operator",
+      "available": 2
+    },
+    "HELPER": {
+      "name": "Helpers / general labour",
+      "available": 30
+    },
+    "MASON": {
+      "name": "Masons",
+      "available": 24
+    },
+    "MIXER": {
+      "name": "Concrete mixers / pumps",
+      "available": 3
+    },
+    "PAINT": {
+      "name": "Painters",
+      "available": 12
+    },
+    "PLUM": {
+      "name": "Plumbers",
+      "available": 8
+    },
+    "TILER": {
+      "name": "Tilers",
+      "available": 10
+    }
+  }
+}

@@ -1,0 +1,68 @@
+activity_id,wbs,name,activity_type,duration,quantity,unit,crew_size,resource,normal_cost,crash_duration,crash_cost,percent_complete,actual_delay_days
+A010,1.1,Site mobilisation and hoarding,SUBSTRUCTURE,4,1,LS,6,HELPER,16560,3,18720,100,0
+A020,1.2,Site clearing and setting-out,SUBSTRUCTURE,5,900,m2,8,HELPER,27600,3,33360,100,0
+A030,1.3,Bulk excavation,SUBSTRUCTURE,8,1400,m3,2,EXC,165600,6,187200,100,3
+A040,1.4,Footing trimming and PCC bed,SUBSTRUCTURE,4,90,m3,8,MASON,34960,3,39520,100,0
+A050,1.5,Footing reinforcement,SUBSTRUCTURE,6,14,t,10,BARB,62100,4,72900,100,2
+A060,1.6,Footing formwork,SUBSTRUCTURE,5,420,m2,8,CARP,43700,3,52820,100,0
+A070,1.7,Footing concrete pour,SUBSTRUCTURE,2,160,m3,2,MIXER,11500,,,100,1
+A080,1.8,Footing curing and strip,SUBSTRUCTURE,4,0,-,4,HELPER,11040,,,100,0
+A090,1.9,Plinth beam reinforcement,SUBSTRUCTURE,6,9,t,10,BARB,62100,4,72900,100,0
+A100,1.10,Plinth beam formwork,SUBSTRUCTURE,5,380,m2,8,CARP,43700,3,52820,100,0
+A110,1.11,Plinth beam concrete,SUBSTRUCTURE,2,60,m3,2,MIXER,11500,,,100,0
+A120,1.12,Backfilling and compaction,SUBSTRUCTURE,6,700,m3,2,EXC,124200,4,145800,100,3
+A130,1.13,Waterproofing and anti-termite treatment,SUBSTRUCTURE,3,520,m2,6,HELPER,12420,2,14580,100,0
+A140,1.14,Plinth filling and PCC,SUBSTRUCTURE,4,450,m2,8,MASON,34960,3,39520,100,0
+A150,2.1,GF Column cage and formwork (ground level),STRUCTURE,6,18,t,10,BARB,62100,4,72900,100,0
+A160,2.2,GF Column concreting (ground level),STRUCTURE,2,30,m3,2,MIXER,11500,,,100,0
+A170,2.3,GF Slab and beam formwork (ground level),STRUCTURE,8,620,m2,12,CARP,104880,6,118560,100,2
+A180,2.4,GF Slab reinforcement (ground level),STRUCTURE,7,16,t,12,BARB,86940,5,99900,100,2
+A190,2.5,GF Slab concreting (ground level),STRUCTURE,2,95,m3,3,MIXER,17250,,,100,0
+A200,2.6,GF Slab curing and deshuttering (ground level),STRUCTURE,7,0,-,4,HELPER,19320,,,100,0
+A210,2.7,1F Column cage and formwork (first level),STRUCTURE,6,18,t,10,BARB,62100,4,72900,100,0
+A220,2.8,1F Column concreting (first level),STRUCTURE,2,30,m3,2,MIXER,11500,,,100,0
+A230,2.9,1F Slab and beam formwork (first level),STRUCTURE,8,620,m2,12,CARP,104880,6,118560,100,0
+A240,2.10,1F Slab reinforcement (first level),STRUCTURE,7,16,t,12,BARB,86940,5,99900,70,3
+A250,2.11,1F Slab concreting (first level),STRUCTURE,2,95,m3,3,MIXER,17250,,,0,0
+A260,2.12,1F Slab curing and deshuttering (first level),STRUCTURE,7,0,-,4,HELPER,19320,,,0,0
+A270,2.13,2F Column cage and formwork (second level),STRUCTURE,6,18,t,10,BARB,62100,4,72900,0,0
+A280,2.14,2F Column concreting (second level),STRUCTURE,2,30,m3,2,MIXER,11500,,,0,0
+A290,2.15,2F Slab and beam formwork (second level),STRUCTURE,8,620,m2,12,CARP,104880,6,118560,0,0
+A300,2.16,2F Slab reinforcement (second level),STRUCTURE,7,16,t,12,BARB,86940,5,99900,0,0
+A310,2.17,2F Slab concreting (second level),STRUCTURE,2,95,m3,3,MIXER,17250,,,0,0
+A320,2.18,2F Slab curing and deshuttering (second level),STRUCTURE,7,0,-,4,HELPER,19320,,,0,0
+A330,2.19,3F Column cage and formwork (third level),STRUCTURE,6,18,t,10,BARB,62100,4,72900,0,0
+A340,2.20,3F Column concreting (third level),STRUCTURE,2,30,m3,2,MIXER,11500,,,0,0
+A350,2.21,3F Slab and beam formwork (third level),STRUCTURE,8,620,m2,12,CARP,104880,6,118560,0,0
+A360,2.22,3F Slab reinforcement (third level),STRUCTURE,7,16,t,12,BARB,86940,5,99900,0,0
+A370,2.23,3F Slab concreting (third level),STRUCTURE,2,95,m3,3,MIXER,17250,,,0,0
+A380,2.24,3F Slab curing and deshuttering (third level),STRUCTURE,7,0,-,4,HELPER,19320,,,0,0
+A390,2.25,Staircase and landing concrete,STRUCTURE,6,28,m3,6,CARP,39330,4,46170,0,0
+A400,2.26,Overhead tank and parapet,STRUCTURE,7,22,m3,8,MASON,61180,5,70300,0,0
+A410,3.1,GF brickwork,MASONRY,14,52000,nos,12,MASON,183540,10,210900,100,0
+A420,3.2,1F brickwork,MASONRY,14,52000,nos,12,MASON,183540,10,210900,0,0
+A430,3.3,2F brickwork,MASONRY,14,52000,nos,12,MASON,183540,10,210900,0,0
+A440,3.4,3F brickwork,MASONRY,12,48000,nos,12,MASON,157320,9,177840,0,0
+A450,4.1,Electrical conduits and boxes (GF-1F),MEP,8,1,LS,6,ELEC,55200,6,62400,0,0
+A460,4.2,Electrical conduits and boxes (2F-3F),MEP,8,1,LS,6,ELEC,55200,6,62400,0,0
+A470,4.3,Plumbing rough-in (GF-1F),MEP,8,1,LS,6,PLUM,55200,6,62400,0,0
+A480,4.4,Plumbing rough-in (2F-3F),MEP,8,1,LS,6,PLUM,55200,6,62400,0,0
+A490,3.5,GF internal plaster,MASONRY,12,1450,m2,10,MASON,131100,9,148200,0,0
+A500,3.6,1F internal plaster,MASONRY,12,1450,m2,10,MASON,131100,9,148200,0,0
+A510,3.7,2F internal plaster,MASONRY,12,1450,m2,10,MASON,131100,9,148200,0,0
+A520,3.8,3F internal plaster,MASONRY,10,1300,m2,10,MASON,109250,7,126350,0,0
+A530,3.9,External scaffolding erection,MASONRY,5,1600,m2,10,HELPER,34500,3,41700,0,0
+A540,3.10,External plastering,MASONRY,18,1600,m2,12,MASON,235980,13,270180,0,0
+A550,4.5,Electrical wiring and distribution boards,MEP,10,1,LS,8,ELEC,92000,7,106400,0,0
+A570,5.1,Door and window frame fixing,FINISH,6,96,nos,8,CARP,52440,4,61560,0,0
+A580,5.2,Flooring tiles (GF-1F),FINISH,14,780,m2,8,TILER,128800,10,148000,0,0
+A590,5.3,Flooring tiles (2F-3F),FINISH,14,780,m2,8,TILER,128800,10,148000,0,0
+A600,5.4,Toilet wall tiling,FINISH,10,360,m2,6,TILER,69000,7,79800,0,0
+A610,5.5,Putty and primer,FINISH,8,3200,m2,8,PAINT,62560,6,70720,0,0
+A620,5.6,Internal painting,FINISH,14,3200,m2,12,PAINT,164220,10,188700,0,0
+A630,4.6,"Fixtures: lights, switches, sanitaryware",MEP,8,1,LS,6,ELEC,55200,6,62400,0,0
+A640,5.7,External painting,FINISH,12,1600,m2,8,PAINT,93840,9,106080,0,0
+A650,6.1,Compound wall and gate,EXTERNAL,15,120,m,8,MASON,131100,11,149340,0,0
+A660,6.2,Site drainage and paving,EXTERNAL,8,450,m2,10,HELPER,55200,6,62400,0,0
+A670,6.3,Landscaping and final cleaning,EXTERNAL,6,1,LS,8,HELPER,33120,4,38880,0,0
+A680,6.4,Snagging and handover inspection,EXTERNAL,4,1,LS,4,HELPER,11040,,,0,0

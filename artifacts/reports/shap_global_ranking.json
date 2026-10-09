@@ -1,0 +1,167 @@
+{
+  "units": "log-odds",
+  "data_source": "SYNTHETIC validation projects",
+  "note": "Computed on the SYNTHETIC validation projects; explains the synthetic data-generating process only.",
+  "ranking": [
+    {
+      "rank": 1,
+      "feature": "predecessor_delay_ratio",
+      "mean_abs_shap": 0.7693727965255118
+    },
+    {
+      "rank": 2,
+      "feature": "f06_financial_issues",
+      "mean_abs_shap": 0.46049486522524663
+    },
+    {
+      "rank": 3,
+      "feature": "f03_approval_delays",
+      "mean_abs_shap": 0.3928917759545969
+    },
+    {
+      "rank": 4,
+      "feature": "max_factor_score",
+      "mean_abs_shap": 0.37966267559352795
+    },
+    {
+      "rank": 5,
+      "feature": "seasonal_exposure",
+      "mean_abs_shap": 0.3743636712853709
+    },
+    {
+      "rank": 6,
+      "feature": "f14_utility_issues",
+      "mean_abs_shap": 0.2591463526347178
+    },
+    {
+      "rank": 7,
+      "feature": "f09_contractor_performance",
+      "mean_abs_shap": 0.21611100419255788
+    },
+    {
+      "rank": 8,
+      "feature": "planned_duration",
+      "mean_abs_shap": 0.19240929440249996
+    },
+    {
+      "rank": 9,
+      "feature": "type_substructure",
+      "mean_abs_shap": 0.15103273225815186
+    },
+    {
+      "rank": 10,
+      "feature": "crew_size",
+      "mean_abs_shap": 0.13643421185065827
+    },
+    {
+      "rank": 11,
+      "feature": "month_cos",
+      "mean_abs_shap": 0.12284574608868275
+    },
+    {
+      "rank": 12,
+      "feature": "f12_quality_rework",
+      "mean_abs_shap": 0.10720319140051623
+    },
+    {
+      "rank": 13,
+      "feature": "criticality_weight",
+      "mean_abs_shap": 0.10127728615923151
+    },
+    {
+      "rank": 14,
+      "feature": "f10_permit_delays",
+      "mean_abs_shap": 0.09567661869815078
+    },
+    {
+      "rank": 15,
+      "feature": "type_finish",
+      "mean_abs_shap": 0.08351775608214293
+    },
+    {
+      "rank": 16,
+      "feature": "f11_equipment_breakdown",
+      "mean_abs_shap": 0.08115829627685162
+    },
+    {
+      "rank": 17,
+      "feature": "f04_weather",
+      "mean_abs_shap": 0.07291553078734601
+    },
+    {
+      "rank": 18,
+      "feature": "type_external",
+      "mean_abs_shap": 0.06841969004846575
+    },
+    {
+      "rank": 19,
+      "feature": "f05_client_change_orders",
+      "mean_abs_shap": 0.06569128026342974
+    },
+    {
+      "rank": 20,
+      "feature": "f13_site_access",
+      "mean_abs_shap": 0.06180175922293776
+    },
+    {
+      "rank": 21,
+      "feature": "f08_subcontractor_delays",
+      "mean_abs_shap": 0.05834602282118311
+    },
+    {
+      "rank": 22,
+      "feature": "type_structure",
+      "mean_abs_shap": 0.0568655202541168
+    },
+    {
+      "rank": 23,
+      "feature": "month_sin",
+      "mean_abs_shap": 0.04590892416416433
+    },
+    {
+      "rank": 24,
+      "feature": "f15_safety_incidents",
+      "mean_abs_shap": 0.045315944949324255
+    },
+    {
+      "rank": 25,
+      "feature": "n_predecessors",
+      "mean_abs_shap": 0.0445418259054324
+    },
+    {
+      "rank": 26,
+      "feature": "daily_output_per_worker",
+      "mean_abs_shap": 0.043116543308251834
+    },
+    {
+      "rank": 27,
+      "feature": "f02_labour_shortage",
+      "mean_abs_shap": 0.035420190194280304
+    },
+    {
+      "rank": 28,
+      "feature": "duration_per_unit",
+      "mean_abs_shap": 0.03227321437075498
+    },
+    {
+      "rank": 29,
+      "feature": "composite_risk_index",
+      "mean_abs_shap": 0.029248666727918215
+    },
+    {
+      "rank": 30,
+      "feature": "type_masonry",
+      "mean_abs_shap": 0.0269397083548614
+    },
+    {
+      "rank": 31,
+      "feature": "f01_material_delivery",
+      "mean_abs_shap": 0.018233269363594602
+    },
+    {
+      "rank": 32,
+      "feature": "f07_design_changes",
+      "mean_abs_shap": 0.017798537319084644
+    }
+  ]
+}

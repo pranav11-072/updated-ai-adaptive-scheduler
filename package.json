@@ -1,0 +1,21 @@
+{
+  "name": "adaptive-scheduler",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "ejs": "^7.0.1",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

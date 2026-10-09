@@ -1,0 +1,247 @@
+{
+  "data_source": "SYNTHETIC",
+  "disclaimer": "All case-study data and all model training data are SYNTHETIC. Model scores measured on synthetic projects are NOT real-world validation. RII weights are PROVISIONAL (the questionnaire survey has not been conducted).",
+  "seed": 42,
+  "fast_mode": false,
+  "split": {
+    "train": [
+      "SYN001",
+      "SYN002",
+      "SYN003",
+      "SYN004",
+      "SYN006",
+      "SYN007",
+      "SYN009",
+      "SYN011",
+      "SYN012",
+      "SYN013",
+      "SYN014",
+      "SYN015",
+      "SYN016",
+      "SYN017",
+      "SYN018",
+      "SYN019",
+      "SYN020",
+      "SYN021",
+      "SYN023",
+      "SYN026",
+      "SYN028",
+      "SYN031",
+      "SYN032",
+      "SYN034",
+      "SYN037",
+      "SYN038",
+      "SYN039",
+      "SYN040",
+      "SYN041",
+      "SYN042",
+      "SYN044"
+    ],
+    "val": [
+      "SYN005",
+      "SYN008",
+      "SYN010",
+      "SYN025",
+      "SYN029",
+      "SYN033",
+      "SYN036"
+    ],
+    "test": [
+      "SYN022",
+      "SYN024",
+      "SYN027",
+      "SYN030",
+      "SYN035",
+      "SYN043",
+      "SYN045"
+    ],
+    "rows": {
+      "test": 469,
+      "val": 469,
+      "train": 2077
+    }
+  },
+  "features": {
+    "kept": [
+      "planned_duration",
+      "crew_size",
+      "n_predecessors",
+      "duration_per_unit",
+      "daily_output_per_worker",
+      "criticality_weight",
+      "predecessor_delay_ratio",
+      "seasonal_exposure",
+      "month_sin",
+      "month_cos",
+      "composite_risk_index",
+      "max_factor_score",
+      "f01_material_delivery",
+      "f02_labour_shortage",
+      "f03_approval_delays",
+      "f04_weather",
+      "f05_client_change_orders",
+      "f06_financial_issues",
+      "f07_design_changes",
+      "f08_subcontractor_delays",
+      "f09_contractor_performance",
+      "f10_permit_delays",
+      "f11_equipment_breakdown",
+      "f12_quality_rework",
+      "f13_site_access",
+      "f14_utility_issues",
+      "f15_safety_incidents",
+      "type_substructure",
+      "type_structure",
+      "type_masonry",
+      "type_finish",
+      "type_external"
+    ],
+    "dropped": [
+      {
+        "feature": "active_factor_count",
+        "reason": "abs correlation > 0.85",
+        "correlated_with": "composite_risk_index",
+        "abs_corr": 0.9631
+      },
+      {
+        "feature": "type_mep",
+        "reason": "abs correlation > 0.85",
+        "correlated_with": "duration_per_unit",
+        "abs_corr": 0.8732
+      }
+    ]
+  },
+  "classification": {
+    "selected": "LogisticRegression",
+    "candidates": {
+      "RandomForest": {
+        "cv_roc_auc": 0.8283180747857856,
+        "best_params": {
+          "max_depth": 6,
+          "min_samples_leaf": 5,
+          "n_estimators": 200
+        }
+      },
+      "GradientBoosting": {
+        "cv_roc_auc": 0.8278144923857269,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 2,
+          "n_estimators": 100
+        }
+      },
+      "LogisticRegression": {
+        "cv_roc_auc": 0.8312469677639506,
+        "best_params": {
+          "C": 0.1
+        }
+      },
+      "XGBoost": {
+        "cv_roc_auc": 0.8247212797173873,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "n_estimators": 150
+        }
+      },
+      "DecisionTree": {
+        "cv_roc_auc": 0.8062484261197117,
+        "best_params": {
+          "max_depth": 3,
+          "min_samples_leaf": 5
+        }
+      }
+    },
+    "threshold_tuning": {
+      "threshold": 0.38,
+      "f2": 0.4007285974499089,
+      "precision": 0.6027397260273972,
+      "precision_constraint_met": true
+    },
+    "metrics": {
+      "validation": {
+        "roc_auc": 0.7279471788715486,
+        "precision": 0.6027397260273972,
+        "recall": 0.3697478991596639,
+        "f1": 0.4583333333333333,
+        "f2": 0.4007285974499089,
+        "accuracy": 0.7782515991471215,
+        "brier": 0.15986155933931007,
+        "n": 469,
+        "positive_rate": 0.2537313432835821
+      },
+      "test": {
+        "roc_auc": 0.8132487667371388,
+        "precision": 0.64,
+        "recall": 0.7441860465116279,
+        "f1": 0.6881720430107527,
+        "f2": 0.7207207207207207,
+        "accuracy": 0.7526652452025586,
+        "brier": 0.1628122151597646,
+        "n": 469,
+        "positive_rate": 0.36673773987206826
+      }
+    },
+    "calibration": "Platt scaling fitted on validation projects",
+    "cv": "GroupKFold(5) by project, scoring=ROC-AUC, SMOTE inside training folds only"
+  },
+  "regression": {
+    "selected": "XGBoost",
+    "candidates": {
+      "LinearRegression": {
+        "cv_mae": 1.1320016055708688,
+        "best_params": {
+          "fit_intercept": true
+        }
+      },
+      "RandomForest": {
+        "cv_mae": 1.000825432868158,
+        "best_params": {
+          "max_depth": 12,
+          "min_samples_leaf": 5,
+          "n_estimators": 200
+        }
+      },
+      "XGBoost": {
+        "cv_mae": 0.9904969692230224,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "n_estimators": 150
+        }
+      },
+      "GradientBoosting": {
+        "cv_mae": 0.9912215271008454,
+        "best_params": {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "n_estimators": 200
+        }
+      },
+      "DecisionTree": {
+        "cv_mae": 1.0746077786725445,
+        "best_params": {
+          "max_depth": 5,
+          "min_samples_leaf": 20
+        }
+      }
+    },
+    "metrics": {
+      "validation": {
+        "mae": 0.7274768352508545,
+        "rmse": 1.2529034273602317,
+        "r2": 0.4183506965637207,
+        "n": 119
+      },
+      "test": {
+        "mae": 0.9122523665428162,
+        "rmse": 1.272496396417518,
+        "r2": 0.6595128774642944,
+        "n": 172
+      }
+    },
+    "trained_on": "delayed activities only",
+    "cv": "GroupKFold(5) by project, scoring=neg MAE"
+  },
+  "train_seconds": 66.0
+}

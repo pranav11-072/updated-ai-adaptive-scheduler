@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title><%= c && c.project ? c.project.name : 'Adaptive Scheduler' %></title>
+  <meta name="description" content="AI-based self-adaptive construction scheduling system with CPM network analysis, delay prediction, and risk mitigation.">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-page="<%= active %>">
+<header class="titleblock">
+  <div class="id">
+    <h1>AI-Based Self-Adaptive Construction Scheduling</h1>
+    <div class="sub"><% if (c && c.project) { %><%= c.project.name %> · <%= c.project.activity_count %> activities · <%= c.project.dependency_count %> links · start <%= c.project.start_date %><% } %></div>
+  </div>
+  <% if (c) { %>
+  <form class="params" method="get">
+    <label>Data date<input type="date" name="data_date" value="<%= c.data_date %>"></label>
+    <label>Mode<select name="mode"><option value="expected" <%= c.mode === 'expected' ? 'selected' : '' %>>expected value</option><option value="conservative" <%= c.mode === 'conservative' ? 'selected' : '' %>>conservative</option></select></label>
+    <label>Threshold<input type="number" step="0.05" min="0" max="1" name="threshold" value="<%= c.threshold %>" style="width:70px"></label>
+    <button>Apply</button>
+    <button class="alt" formmethod="post" formaction="/run?<%= query %>" title="Run one cycle and save it as a new version">Run &amp; store cycle</button>
+  </form>
+  <% } %>
+</header>
+<nav>
+  <% pages.forEach(function([ep, label, path]) { %>
+    <a href="<%= path %><%= query ? '?' + query : '' %>" class="<%= active === ep ? 'on' : '' %>"><%= label %></a>
+  <% }); %>
+</nav>
+<main>
+  <% if (c) { %>
+    <div class="banner"><b>Synthetic demonstration data.</b> <%= c.notice %></div>
+    <% (c.warnings || []).forEach(function(w) { %>
+      <div class="warn">⚠ <%= w %></div>
+    <% }); %>
+    <script id="cycle-data" type="application/json"><%- JSON.stringify(c) %></script>
+  <% } %>

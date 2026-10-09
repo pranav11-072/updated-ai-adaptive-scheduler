@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<h2>Ranked mitigation recommendations</h2>
+<p class="note">Only critical and near-critical activities. "Engineering-judgement" estimates are provisional percentages; crash estimates follow crash limits and cost slopes. <a href="/export/recommendations.csv?<%= query %>">Export CSV</a></p>
+<% if (c.recommendations && c.recommendations.length > 0) { %>
+<div class="scroll"><table><tr><th>#</th><th>Activity</th><th>Status</th><th>Cause</th><th>SHAP share</th><th>Recommended action</th><th>Recovery (d)</th><th>Cost (INR)</th><th>Basis</th><th>Priority</th></tr>
+<% c.recommendations.forEach(function(r) { %>
+<tr>
+  <td class="num"><%= r.rank %></td>
+  <td><%= r.activity_id %> <%= r.activity_name %></td>
+  <td><%= r.status %></td>
+  <td><%= r.cause %></td>
+  <td class="num"><%= r.shap_share !== null ? Math.round(r.shap_share * 100) + '%' : '–' %></td>
+  <td><%= r.action %></td>
+  <td class="num"><%= r.recovery_days %></td>
+  <td class="num"><%= Math.round(r.cost_impact_inr).toLocaleString() %></td>
+  <td><%= r.basis %></td>
+  <td><%= r.priority %></td>
+</tr>
+<% }); %>
+</table></div>
+<% } else { %>
+<p>No recommendations: no critical or near-critical activity currently carries an injected delay (or no model is available).</p>
+<% } %>
+<%- include('partials/footer') %>
