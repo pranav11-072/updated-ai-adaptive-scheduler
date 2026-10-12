@@ -134,6 +134,328 @@ export function loadProjectData(projectDir = PROJECT_DIR): {
   return { project: meta, activities, dependencies, riskRegister: register };
 }
 
+export interface TaskInput {
+  activity_id?: string;
+  wbs?: string;
+  name: string;
+  activity_type?: string;
+  start_date: string;
+  end_date: string;
+  predecessors?: string;
+  resource?: string;
+  crew_size?: number;
+  quantity?: number;
+  unit?: string;
+  normal_cost?: number;
+  crash_duration?: number | null;
+  crash_cost?: number | null;
+  percent_complete?: number;
+  actual_delay_days?: number;
+}
+
+export function parsePredecessorString(targetId: string, predStr?: string): Dependency[] {
+  if (!predStr || !predStr.trim()) return [];
+  const parts = predStr.split(',').map(s => s.trim()).filter(Boolean);
+  const deps: Dependency[] = [];
+  for (const part of parts) {
+    const match = part.match(/^([A-Za-z0-9_-]+)(?::([A-Za-z]{2})?([+-]?\d+)?)?$/);
+    if (match) {
+      const pred = match[1];
+      const type = (match[2]?.toUpperCase() as any) || 'FS';
+      const lag = match[3] ? parseInt(match[3], 10) : 0;
+      deps.push({
+        predecessor: pred,
+        successor: targetId,
+        dep_type: (['FS', 'SS', 'FF', 'SF'].includes(type) ? type : 'FS') as any,
+        lag: isNaN(lag) ? 0 : lag
+      });
+    }
+  }
+  return deps;
+}
+
+export function formatPredecessorString(targetId: string, dependencies: Dependency[]): string {
+  const preds = dependencies.filter(d => d.successor === targetId);
+  return preds.map(d => `${d.predecessor}${d.dep_type !== 'FS' || d.lag !== 0 ? `:${d.dep_type}${d.lag !== 0 ? d.lag : ''}` : ''}`).join(', ');
+}
+
+export interface ScheduleState {
+  project: ProjectMetadata;
+  activities: Activity[];
+  dependencies: Dependency[];
+  riskRegister: RiskRegister;
+  startOffsets: Record<string, number>;
+}
+
+let activeScheduleState: ScheduleState | null = null;
+
+export function getScheduleState(): ScheduleState {
+  if (!activeScheduleState) {
+    const loaded = loadProjectData();
+    const cal = new WorkingCalendar(
+      loaded.project.start_date,
+      loaded.project.work_week,
+      loaded.project.holidays,
+      loaded.project.monsoon
+    );
+    const eng = new CPMEngine(loaded.activities, loaded.dependencies, cal);
+    const cpmRes = eng.compute();
+
+    for (const a of loaded.activities) {
+      const s = cpmRes.schedules[a.activity_id];
+      if (s) {
+        a.start_date = cal.dateOf(s.es);
+        a.end_date = cal.finishDate(s.ef);
+        a.predecessors = formatPredecessorString(a.activity_id, loaded.dependencies);
+      }
+    }
+
+    activeScheduleState = {
+      project: loaded.project,
+      activities: loaded.activities,
+      dependencies: loaded.dependencies,
+      riskRegister: loaded.riskRegister,
+      startOffsets: {}
+    };
+  }
+  return activeScheduleState;
+}
+
+export function addScheduleTask(input: TaskInput): Activity {
+  const state = getScheduleState();
+  const cal = new WorkingCalendar(
+    state.project.start_date,
+    state.project.work_week,
+    state.project.holidays,
+    state.project.monsoon
+  );
+
+  let aid = (input.activity_id || '').trim();
+  if (!aid) {
+    let maxNum = 0;
+    for (const a of state.activities) {
+      const m = a.activity_id.match(/^A(\d+)$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    const nextNum = maxNum > 0 ? maxNum + 10 : 10;
+    aid = 'A' + String(nextNum).padStart(3, '0');
+  }
+
+  if (state.activities.some(a => a.activity_id === aid)) {
+    throw new Error(`Activity ID "${aid}" already exists in the schedule`);
+  }
+
+  const sDate = input.start_date || state.project.start_date;
+  const eDate = input.end_date || sDate;
+  const duration = Math.max(1, cal.workingDaysBetween(sDate, eDate));
+
+  const normCost = Number(input.normal_cost) || 0;
+  const crashDur = input.crash_duration ? Number(input.crash_duration) : null;
+  const crashCost = input.crash_cost ? Number(input.crash_cost) : null;
+
+  let maxCrash = 0;
+  let costSlope = 0;
+  if (crashDur !== null && crashDur < duration && crashCost !== null && crashCost > normCost) {
+    maxCrash = duration - crashDur;
+    costSlope = (crashCost - normCost) / maxCrash;
+  }
+
+  const newActivity: Activity = {
+    activity_id: aid,
+    wbs: (input.wbs || '1.0').trim(),
+    name: (input.name || 'Untitled Task').trim(),
+    activity_type: (input.activity_type || 'STRUCTURE').trim(),
+    duration,
+    quantity: Number(input.quantity) || 1,
+    unit: (input.unit || 'LS').trim(),
+    crew_size: Number(input.crew_size) || 4,
+    resource: (input.resource || 'HELPER').trim(),
+    normal_cost: normCost,
+    crash_duration: crashDur,
+    crash_cost: crashCost,
+    percent_complete: Math.min(100, Math.max(0, Number(input.percent_complete) || 0)),
+    actual_delay_days: Math.max(0, Number(input.actual_delay_days) || 0),
+    max_crash_days: maxCrash,
+    cost_slope: costSlope,
+    start_date: sDate,
+    end_date: eDate,
+    predecessors: input.predecessors || ''
+  };
+
+  state.activities.push(newActivity);
+
+  if (sDate > state.project.start_date) {
+    state.startOffsets[aid] = cal.offsetOf(sDate);
+  }
+
+  if (input.predecessors) {
+    const newDeps = parsePredecessorString(aid, input.predecessors);
+    for (const d of newDeps) {
+      if (state.activities.some(a => a.activity_id === d.predecessor)) {
+        state.dependencies.push(d);
+      }
+    }
+  }
+
+  return newActivity;
+}
+
+export function updateScheduleTask(id: string, input: TaskInput): Activity {
+  const state = getScheduleState();
+  const idx = state.activities.findIndex(a => a.activity_id === id);
+  if (idx === -1) {
+    throw new Error(`Activity "${id}" not found`);
+  }
+
+  const cal = new WorkingCalendar(
+    state.project.start_date,
+    state.project.work_week,
+    state.project.holidays,
+    state.project.monsoon
+  );
+
+  const existing = state.activities[idx];
+  const sDate = input.start_date || existing.start_date || state.project.start_date;
+  const eDate = input.end_date || existing.end_date || sDate;
+  const duration = Math.max(1, cal.workingDaysBetween(sDate, eDate));
+
+  const normCost = input.normal_cost !== undefined ? Number(input.normal_cost) : existing.normal_cost;
+  const crashDur = input.crash_duration !== undefined ? (input.crash_duration ? Number(input.crash_duration) : null) : existing.crash_duration;
+  const crashCost = input.crash_cost !== undefined ? (input.crash_cost ? Number(input.crash_cost) : null) : existing.crash_cost;
+
+  let maxCrash = 0;
+  let costSlope = 0;
+  if (crashDur !== null && crashDur < duration && crashCost !== null && crashCost > normCost) {
+    maxCrash = duration - crashDur;
+    costSlope = (crashCost - normCost) / maxCrash;
+  }
+
+  const updated: Activity = {
+    ...existing,
+    name: input.name !== undefined ? input.name.trim() : existing.name,
+    wbs: input.wbs !== undefined ? input.wbs.trim() : existing.wbs,
+    activity_type: input.activity_type !== undefined ? input.activity_type.trim() : existing.activity_type,
+    duration,
+    quantity: input.quantity !== undefined ? Number(input.quantity) : existing.quantity,
+    unit: input.unit !== undefined ? input.unit.trim() : existing.unit,
+    crew_size: input.crew_size !== undefined ? Number(input.crew_size) : existing.crew_size,
+    resource: input.resource !== undefined ? input.resource.trim() : existing.resource,
+    normal_cost: normCost,
+    crash_duration: crashDur,
+    crash_cost: crashCost,
+    percent_complete: input.percent_complete !== undefined ? Math.min(100, Math.max(0, Number(input.percent_complete))) : existing.percent_complete,
+    actual_delay_days: input.actual_delay_days !== undefined ? Math.max(0, Number(input.actual_delay_days)) : existing.actual_delay_days,
+    max_crash_days: maxCrash,
+    cost_slope: costSlope,
+    start_date: sDate,
+    end_date: eDate,
+    predecessors: input.predecessors !== undefined ? input.predecessors.trim() : existing.predecessors
+  };
+
+  state.activities[idx] = updated;
+
+  if (sDate > state.project.start_date) {
+    state.startOffsets[id] = cal.offsetOf(sDate);
+  } else {
+    delete state.startOffsets[id];
+  }
+
+  if (input.predecessors !== undefined) {
+    state.dependencies = state.dependencies.filter(d => d.successor !== id);
+    const newDeps = parsePredecessorString(id, input.predecessors);
+    for (const d of newDeps) {
+      if (state.activities.some(a => a.activity_id === d.predecessor)) {
+        state.dependencies.push(d);
+      }
+    }
+  }
+
+  return updated;
+}
+
+export function deleteScheduleTask(id: string): void {
+  const state = getScheduleState();
+  state.activities = state.activities.filter(a => a.activity_id !== id);
+  state.dependencies = state.dependencies.filter(d => d.predecessor !== id && d.successor !== id);
+  delete state.startOffsets[id];
+}
+
+export function resetScheduleTasks(): void {
+  activeScheduleState = null;
+  getScheduleState();
+}
+
+export function clearScheduleTasks(): void {
+  const state = getScheduleState();
+  state.activities = [];
+  state.dependencies = [];
+  state.startOffsets = {};
+}
+
+export function loadScheduleTemplate(name: string): void {
+  if (name === 'g3_case_study') {
+    resetScheduleTasks();
+    return;
+  }
+
+  if (name === 'substructure') {
+    const loaded = loadProjectData();
+    const subActs = loaded.activities.filter(a => a.activity_id <= 'A140');
+    const subIds = new Set(subActs.map(a => a.activity_id));
+    const subDeps = loaded.dependencies.filter(d => subIds.has(d.predecessor) && subIds.has(d.successor));
+    activeScheduleState = {
+      project: { ...loaded.project, name: 'Substructure & Foundation Schedule' },
+      activities: subActs,
+      dependencies: subDeps,
+      riskRegister: loaded.riskRegister,
+      startOffsets: {}
+    };
+    return;
+  }
+
+  if (name === 'commercial_warehouse') {
+    const loaded = loadProjectData();
+    const warehouseActs: Activity[] = [
+      { activity_id: 'W010', wbs: '1.1', name: 'Site clearing, grading and hoarding', activity_type: 'SUBSTRUCTURE', duration: 5, quantity: 1200, unit: 'm2', crew_size: 6, resource: 'EXC', normal_cost: 45000, crash_duration: 3, crash_cost: 58000, percent_complete: 100, actual_delay_days: 0, max_crash_days: 2, cost_slope: 6500, start_date: '2026-05-04', end_date: '2026-05-09', predecessors: '' },
+      { activity_id: 'W020', wbs: '1.2', name: 'Foundation augered piles and grade beams', activity_type: 'SUBSTRUCTURE', duration: 11, quantity: 24, unit: 'EA', crew_size: 10, resource: 'MASON', normal_cost: 165000, crash_duration: 8, crash_cost: 210000, percent_complete: 60, actual_delay_days: 1, max_crash_days: 3, cost_slope: 15000, start_date: '2026-05-11', end_date: '2026-05-23', predecessors: 'W010' },
+      { activity_id: 'W030', wbs: '2.1', name: 'Structural steel columns and portal rafters', activity_type: 'STRUCTURE', duration: 12, quantity: 45, unit: 't', crew_size: 12, resource: 'CARP', normal_cost: 280000, crash_duration: 9, crash_cost: 340000, percent_complete: 0, actual_delay_days: 0, max_crash_days: 3, cost_slope: 20000, start_date: '2026-05-25', end_date: '2026-06-08', predecessors: 'W020' },
+      { activity_id: 'W040', wbs: '2.2', name: 'Roof trusses, purlins and bracing', activity_type: 'STRUCTURE', duration: 8, quantity: 18, unit: 't', crew_size: 8, resource: 'CARP', normal_cost: 140000, crash_duration: 6, crash_cost: 175000, percent_complete: 0, actual_delay_days: 0, max_crash_days: 2, cost_slope: 17500, start_date: '2026-06-09', end_date: '2026-06-18', predecessors: 'W030' },
+      { activity_id: 'W050', wbs: '3.1', name: 'Metal profile roof sheeting & wall cladding', activity_type: 'EXTERNAL', duration: 10, quantity: 2200, unit: 'm2', crew_size: 10, resource: 'HELPER', normal_cost: 195000, crash_duration: 7, crash_cost: 245000, percent_complete: 0, actual_delay_days: 0, max_crash_days: 3, cost_slope: 16666, start_date: '2026-06-19', end_date: '2026-07-01', predecessors: 'W040' },
+      { activity_id: 'W060', wbs: '3.2', name: 'Heavy-duty laser screed floor slab pour', activity_type: 'STRUCTURE', duration: 9, quantity: 380, unit: 'm3', crew_size: 8, resource: 'MIXER', normal_cost: 310000, crash_duration: 6, crash_cost: 375000, percent_complete: 0, actual_delay_days: 0, max_crash_days: 3, cost_slope: 21666, start_date: '2026-06-19', end_date: '2026-06-30', predecessors: 'W030:FS10' },
+      { activity_id: 'W070', wbs: '4.1', name: 'High-bay LED lighting & electrical distribution', activity_type: 'MEP', duration: 11, quantity: 1, unit: 'LS', crew_size: 6, resource: 'ELEC', normal_cost: 125000, crash_duration: 8, crash_cost: 160000, percent_complete: 0, actual_delay_days: 0, max_crash_days: 3, cost_slope: 11666, start_date: '2026-07-02', end_date: '2026-07-15', predecessors: 'W050' },
+      { activity_id: 'W080', wbs: '5.1', name: 'Final inspection, fire clearance & handover', activity_type: 'EXTERNAL', duration: 5, quantity: 1, unit: 'LS', crew_size: 4, resource: 'HELPER', normal_cost: 25000, crash_duration: null, crash_cost: null, percent_complete: 0, actual_delay_days: 0, max_crash_days: 0, cost_slope: 0, start_date: '2026-07-16', end_date: '2026-07-21', predecessors: 'W060, W070' }
+    ];
+
+    const warehouseDeps: Dependency[] = [
+      { predecessor: 'W010', successor: 'W020', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W020', successor: 'W030', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W030', successor: 'W040', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W040', successor: 'W050', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W030', successor: 'W060', dep_type: 'FS', lag: 10 },
+      { predecessor: 'W050', successor: 'W070', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W060', successor: 'W080', dep_type: 'FS', lag: 0 },
+      { predecessor: 'W070', successor: 'W080', dep_type: 'FS', lag: 0 }
+    ];
+
+    activeScheduleState = {
+      project: {
+        ...loaded.project,
+        project_id: 'CS-WH-002',
+        name: 'Pre-Engineered Steel Warehouse Schedule',
+        start_date: '2026-05-04',
+        data_date: '2026-05-20'
+      },
+      activities: warehouseActs,
+      dependencies: warehouseDeps,
+      riskRegister: loaded.riskRegister,
+      startOffsets: {}
+    };
+  }
+}
+
 // In-memory store of cycle history
 export interface CycleVersion {
   version_id: number;
@@ -222,7 +544,8 @@ export function runCycle(
   threshold = 0.60,
   forceStore = false
 ): { cycle: CycleData; gantt: any } {
-  const { project, activities, dependencies, riskRegister } = loadProjectData();
+  const state = getScheduleState();
+  const { project, activities, dependencies, riskRegister, startOffsets } = state;
   const calendar = new WorkingCalendar(
     project.start_date,
     project.work_week,
@@ -235,7 +558,7 @@ export function runCycle(
     throw new Error(`Data date ${dd} is before project start ${project.start_date}`);
   }
 
-  const engine = new CPMEngine(activities, dependencies, calendar);
+  const engine = new CPMEngine(activities, dependencies, calendar, startOffsets);
   const baseline = engine.compute();
 
   const { predictions, explanations, modelInfo } = computePredictionsAndExplanations(
@@ -305,7 +628,13 @@ export function runCycle(
       predicted_delay_days: pr ? pr.predicted_delay_days : null,
       risk_band: pr ? pr.risk_band : null,
       at_risk: pr ? pr.at_risk : false,
-      drivers: pr ? pr.drivers : ''
+      drivers: pr ? pr.drivers : '',
+      predecessors: a.predecessors || formatPredecessorString(a.activity_id, dependencies),
+      normal_cost: a.normal_cost,
+      crash_duration: a.crash_duration,
+      crash_cost: a.crash_cost,
+      quantity: a.quantity,
+      unit: a.unit
     });
   }
 

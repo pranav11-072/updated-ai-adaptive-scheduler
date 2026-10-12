@@ -15,6 +15,9 @@ export interface Activity {
   actual_delay_days: number;
   max_crash_days: number;
   cost_slope: number;
+  start_date?: string;
+  end_date?: string;
+  predecessors?: string;
 }
 
 export interface Dependency {

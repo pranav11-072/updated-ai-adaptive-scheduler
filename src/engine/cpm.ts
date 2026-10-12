@@ -5,14 +5,26 @@ export class CPMEngine {
   public activities: Activity[];
   public dependencies: Dependency[];
   public calendar: WorkingCalendar;
+  public startOffsets: Record<string, number>;
   private order: string[] = [];
   private preds: Record<string, Array<{ pred: string; type: string; lag: number }>> = {};
   private succs: Record<string, Array<{ succ: string; type: string; lag: number }>> = {};
 
-  constructor(activities: Activity[], dependencies: Dependency[], calendar: WorkingCalendar) {
+  constructor(
+    activities: Activity[],
+    dependencies: Dependency[],
+    calendar: WorkingCalendar,
+    startOffsets?: Record<string, number>
+  ) {
     this.activities = activities;
     this.dependencies = dependencies;
     this.calendar = calendar;
+    this.startOffsets = startOffsets || {};
+
+    if (activities.length === 0) {
+      this.order = [];
+      return;
+    }
 
     const inDegree: Record<string, number> = {};
     const adj: Record<string, string[]> = {};
@@ -57,6 +69,19 @@ export class CPMEngine {
   }
 
   public compute(durationOverrides?: Record<string, number>): CPMResult {
+    const cal = this.calendar;
+    if (this.activities.length === 0) {
+      return {
+        schedules: {},
+        project_duration: 0,
+        critical_path: [],
+        start_date: cal.start,
+        completion_date: cal.start,
+        start_of: () => cal.start,
+        finish_of: () => cal.start
+      };
+    }
+
     const dur: Record<string, number> = {};
     for (const a of this.activities) {
       dur[a.activity_id] = a.duration;
@@ -73,7 +98,7 @@ export class CPMEngine {
 
     for (const i of this.order) {
       const d = dur[i];
-      let s = 0;
+      let s = this.startOffsets[i] !== undefined ? this.startOffsets[i] : 0;
       for (const { pred: p, type: t, lag } of this.preds[i]) {
         let c = 0;
         if (t === 'FS') c = ef[p] + lag;
@@ -139,7 +164,6 @@ export class CPMEngine {
       .sort((a, b) => a.es - b.es || a.ef - b.ef || a.activity_id.localeCompare(b.activity_id))
       .map(s => s.activity_id);
 
-    const cal = this.calendar;
     return {
       schedules,
       project_duration: end,

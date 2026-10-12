@@ -1,0 +1,458 @@
+<%- include('partials/header') %>
+
+<% if (msg) { %>
+<div class="banner" style="background:#e8f5e9;border-color:#43a047;color:#1b5e20;"><b>✓ Success:</b> <%= msg %></div>
+<% } %>
+<% if (error) { %>
+<div class="warn"><b>⚠ Error:</b> <%= error %></div>
+<% } %>
+
+<div class="builder-header card" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div>
+    <h2 style="margin:0 0 4px;border:none;padding:0">Construction Task Input &amp; Schedule Builder</h2>
+    <div class="sub" style="color:var(--muted);font-size:12px">Input construction tasks with explicit start and end dates to build or modify the initial CPM schedule data structure.</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <form method="post" action="/builder/template" style="display:inline-flex;gap:6px;align-items:center">
+      <label style="font-size:11px;text-transform:uppercase;color:var(--muted)">Presets:
+        <select name="template" onchange="this.form.submit()" style="font-size:12px;padding:3px 6px">
+          <option value="" disabled selected>Load Template...</option>
+          <option value="g3_case_study">G+3 Building (67 tasks)</option>
+          <option value="substructure">Foundation &amp; Substructure (14 tasks)</option>
+          <option value="commercial_warehouse">Steel Warehouse (8 tasks)</option>
+        </select>
+      </label>
+    </form>
+    <form method="post" action="/builder/reset" style="display:inline" onsubmit="return confirm('Reset all tasks to the synthetic G+3 building case study?')">
+      <button type="submit" class="alt" style="font-size:12px;padding:4px 10px">Reset to Case Study</button>
+    </form>
+    <form method="post" action="/builder/clear" style="display:inline" onsubmit="return confirm('Clear ALL tasks to start a fresh custom schedule?')">
+      <button type="submit" class="alt" style="font-size:12px;padding:4px 10px;color:var(--critical);border-color:var(--critical)">Clear All</button>
+    </form>
+    <a href="/gantt<%= query ? '?' + query : '' %>" class="btn" style="font-size:12px;padding:5px 12px">View Gantt Chart →</a>
+  </div>
+</div>
+
+<div class="grid g2" style="align-items:start">
+  <!-- FORM COMPONENT -->
+  <div class="card form-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:12px">
+      <b id="form-title" style="font-size:14px;color:var(--ink)">＋ Add Construction Task</b>
+      <span id="edit-badge" class="chip" style="display:none;background:var(--accent)">Editing <span id="edit-id-display"></span></span>
+    </div>
+
+    <!-- Live Working Days Date Calculation Badge -->
+    <div id="calc-preview" style="background:#f4f6fa;border:1px solid #d0d7de;border-radius:3px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <span style="color:var(--muted)">Working Duration:</span>
+        <b id="calc-wd" style="color:var(--blue);font-size:14px;margin-left:4px">5 working days</b>
+      </div>
+      <div style="color:var(--muted);font-size:11.5px">
+        <span id="calc-span">6 cal. days</span> · <span id="calc-monsoon">0% monsoon</span>
+      </div>
+    </div>
+
+    <form id="task-form" method="post" action="/builder/add">
+      <div class="form-section">
+        <div class="section-title">Task Identification</div>
+        <div class="form-row r4">
+          <label>Task ID
+            <input type="text" id="inp-id" name="activity_id" placeholder="e.g. A010" title="Leave empty to auto-generate next ID">
+          </label>
+          <label>WBS Code
+            <input type="text" id="inp-wbs" name="wbs" placeholder="1.1" value="1.0">
+          </label>
+          <label style="grid-column:span 2">Task Name / Description *
+            <input type="text" id="inp-name" name="name" required placeholder="e.g. Footing reinforcement & formwork">
+          </label>
+        </div>
+
+        <div class="form-row r2" style="margin-top:8px">
+          <label>Activity Type
+            <select id="inp-type" name="activity_type">
+              <option value="SUBSTRUCTURE">SUBSTRUCTURE (Earthwork, Foundations, Plinth)</option>
+              <option value="STRUCTURE" selected>STRUCTURE (Columns, Beams, Slabs)</option>
+              <option value="MASONRY">MASONRY (Brickwork, Blockwork, Lintels)</option>
+              <option value="MEP">MEP (Plumbing, Electrical, HVAC)</option>
+              <option value="FINISH">FINISH (Plastering, Flooring, Painting)</option>
+              <option value="EXTERNAL">EXTERNAL (Site works, Paving, Landscaping)</option>
+            </select>
+          </label>
+          <label>Predecessors (Dependencies)
+            <input type="text" id="inp-preds" name="predecessors" placeholder="e.g. A010, A020:SS2, A030:FS1">
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section" style="margin-top:12px">
+        <div class="section-title">Schedule Window (Start &amp; End Dates)</div>
+        <div class="form-row r2">
+          <label>Planned Start Date *
+            <input type="date" id="inp-start" name="start_date" required value="<%= c ? c.data_date : '2026-05-04' %>">
+          </label>
+          <label>Planned End Date *
+            <input type="date" id="inp-end" name="end_date" required value="<%= c ? c.data_date : '2026-05-09' %>">
+          </label>
+        </div>
+        <div class="note" style="margin-top:4px;font-size:11px">
+          The engine calculates integer working days automatically using the project's 6-day work calendar and site holidays.
+        </div>
+      </div>
+
+      <div class="form-section" style="margin-top:12px">
+        <div class="section-title">Resource &amp; Cost Parameters</div>
+        <div class="form-row r3">
+          <label>Trade Resource
+            <select id="inp-res" name="resource">
+              <option value="HELPER">HELPER (Helpers / general labour)</option>
+              <option value="MASON">MASON (Masons)</option>
+              <option value="CARP">CARP (Carpenters)</option>
+              <option value="BARB">BARB (Bar benders)</option>
+              <option value="MIXER">MIXER (Concrete mixers / pumps)</option>
+              <option value="EXC">EXC (Excavators with operator)</option>
+              <option value="ELEC">ELEC (Electricians)</option>
+              <option value="PLUM">PLUM (Plumbers)</option>
+              <option value="PAINT">PAINT (Painters)</option>
+              <option value="TILER">TILER (Tilers)</option>
+            </select>
+          </label>
+          <label>Crew Size
+            <input type="number" id="inp-crew" name="crew_size" min="1" max="100" value="6">
+          </label>
+          <label>Quantity &amp; Unit
+            <div style="display:flex;gap:4px">
+              <input type="number" id="inp-qty" name="quantity" step="any" placeholder="Qty" value="100" style="width:65%">
+              <input type="text" id="inp-unit" name="unit" placeholder="m3" value="m3" style="width:35%">
+            </div>
+          </label>
+        </div>
+
+        <div class="form-row r3" style="margin-top:8px">
+          <label>Normal Cost (INR)
+            <input type="number" id="inp-cost" name="normal_cost" min="0" placeholder="0" value="50000">
+          </label>
+          <label>Crash Duration (wd)
+            <input type="number" id="inp-crash-dur" name="crash_duration" min="1" placeholder="Optional">
+          </label>
+          <label>Crash Cost (INR)
+            <input type="number" id="inp-crash-cost" name="crash_cost" min="0" placeholder="Optional">
+          </label>
+        </div>
+
+        <div class="form-row r2" style="margin-top:8px">
+          <label>Progress Complete (%)
+            <input type="number" id="inp-prog" name="percent_complete" min="0" max="100" step="5" value="0">
+          </label>
+          <label>Observed Delay Days
+            <input type="number" id="inp-delay" name="actual_delay_days" min="0" value="0" placeholder="0">
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;align-items:center">
+        <button type="submit" id="btn-submit" style="flex:1;background:var(--blue);border-color:var(--blue);font-weight:600">＋ Add Task to Schedule</button>
+        <button type="button" id="btn-cancel" class="alt" onclick="resetForm()" style="display:none">Cancel Edit</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- SCHEDULE KPIS & QUICK TOOLS -->
+  <div>
+    <div class="card">
+      <b>Current Schedule Architecture</b>
+      <div class="grid g2" style="margin-top:10px;gap:8px">
+        <div style="background:#faf8f2;padding:8px;border:1px solid var(--line)">
+          <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Total Activities</div>
+          <div style="font-size:22px;font-weight:600" class="mono"><%= c ? c.project.activity_count : 0 %></div>
+          <div style="font-size:11px;color:var(--muted)"><%= c ? c.project.dependency_count : 0 %> dependency links</div>
+        </div>
+        <div style="background:#faf8f2;padding:8px;border:1px solid var(--line)">
+          <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Project Duration</div>
+          <div style="font-size:22px;font-weight:600" class="mono"><%= c && c.kpis ? c.kpis.baseline_duration_wd : 0 %> <span style="font-size:13px;font-weight:normal">wd</span></div>
+          <div style="font-size:11px;color:var(--muted)">finishes <%= c && c.kpis ? c.kpis.baseline_completion : '–' %></div>
+        </div>
+        <div style="background:#faf8f2;padding:8px;border:1px solid var(--line)">
+          <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Critical Path</div>
+          <div style="font-size:22px;font-weight:600" class="mono"><%= c && c.kpis ? c.kpis.critical_activities : 0 %> <span style="font-size:13px;font-weight:normal">tasks</span></div>
+          <div style="font-size:11px;color:var(--critical)">Zero total float</div>
+        </div>
+        <div style="background:#faf8f2;padding:8px;border:1px solid var(--line)">
+          <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Near-Critical Tasks</div>
+          <div style="font-size:22px;font-weight:600" class="mono"><%= c && c.kpis ? c.kpis.near_critical_count : 0 %></div>
+          <div style="font-size:11px;color:var(--muted)">0 &lt; Float ≤ 5 wd</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5">
+        <b>How CPM Schedule Building Works:</b> Tasks are structured with working day windows. Setting predecessors creates FS/SS/FF/SF constraints. The engine computes early and late dates, floats, and isolates the critical path.
+      </div>
+    </div>
+
+    <!-- Quick Predecessor Helper Card -->
+    <div class="card" style="margin-top:12px">
+      <b>Quick Dependency Helper</b>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 8px">Select an existing activity to insert into the Predecessors input:</div>
+      <div style="display:flex;gap:6px">
+        <select id="pred-selector" style="flex:1;font-size:12px">
+          <option value="">Choose task to link...</option>
+          <% if (c && c.activities) { %>
+            <% c.activities.forEach(function(a) { %>
+              <option value="<%= a.activity_id %>"><%= a.activity_id %>: <%= a.name %> (<%= a.current_duration %> wd)</option>
+            <% }); %>
+          <% } %>
+        </select>
+        <select id="pred-type-sel" style="width:80px;font-size:12px">
+          <option value="FS">FS (Finish-Start)</option>
+          <option value="SS">SS (Start-Start)</option>
+          <option value="FF">FF (Finish-Finish)</option>
+          <option value="SF">SF (Start-Finish)</option>
+        </select>
+        <input type="number" id="pred-lag-sel" placeholder="Lag" value="0" style="width:50px;font-size:12px">
+        <button type="button" class="alt" onclick="addPredHelper()" style="padding:4px 8px;font-size:12px">+ Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE DATA STRUCTURE TABLE -->
+<div style="margin-top:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <h2 style="margin:0;border:none;padding:0">Defined Construction Tasks in Schedule Structure (<%= c && c.activities ? c.activities.length : 0 %>)</h2>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="text" id="task-search" placeholder="Search tasks..." oninput="filterTable()" style="font-size:12px;padding:4px 8px;width:180px">
+      <select id="type-filter" onchange="filterTable()" style="font-size:12px;padding:4px 8px">
+        <option value="all">All Types</option>
+        <option value="SUBSTRUCTURE">Substructure</option>
+        <option value="STRUCTURE">Structure</option>
+        <option value="MASONRY">Masonry</option>
+        <option value="MEP">MEP</option>
+        <option value="FINISH">Finish</option>
+        <option value="EXTERNAL">External</option>
+      </select>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="crit-only" onchange="filterTable()"> Critical Only
+      </label>
+    </div>
+  </div>
+
+  <div class="scroll" style="max-height:60vh">
+    <table id="tasks-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>WBS</th>
+          <th>Task Name</th>
+          <th>Type</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th class="num">Duration</th>
+          <th>Predecessors</th>
+          <th>Resource &amp; Crew</th>
+          <th class="num">Float</th>
+          <th>Status</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (c && c.activities && c.activities.length > 0) { %>
+          <% c.activities.forEach(function(a) { %>
+            <tr id="row-<%= a.activity_id %>" data-type="<%= a.type %>" data-critical="<%= a.critical ? '1' : '0' %>">
+              <td><b class="mono"><%= a.activity_id %></b></td>
+              <td class="mono"><%= a.wbs %></td>
+              <td>
+                <div style="font-weight:500"><%= a.name %></div>
+                <% if (a.percent_complete > 0) { %>
+                  <div style="font-size:10.5px;color:var(--muted)">Progress: <%= a.percent_complete %>%<%= a.injected_days > 0 ? ` · ${a.injected_days}d delay` : '' %></div>
+                <% } %>
+              </td>
+              <td><span class="chip <%= a.risk_band || 'medium' %>" style="font-size:10px;text-transform:lowercase"><%= a.type %></span></td>
+              <td class="mono"><%= a.baseline_start %></td>
+              <td class="mono"><%= a.baseline_finish %></td>
+              <td class="num"><%= a.planned_duration %> wd</td>
+              <td class="mono" style="font-size:11px"><%= a.predecessors || '–' %></td>
+              <td><%= a.resource %> (<%= a.crew_size %>)</td>
+              <td class="num <%= a.critical ? 'bad' : '' %>"><%= a.total_float %> wd</td>
+              <td>
+                <% if (a.critical) { %>
+                  <span class="tag">CRITICAL</span>
+                <% } else if (a.near_critical) { %>
+                  <span style="font-size:11px;color:var(--high);font-weight:600">NEAR</span>
+                <% } else { %>
+                  <span style="font-size:11px;color:var(--muted)">Normal</span>
+                <% } %>
+              </td>
+              <td style="text-align:center;white-space:nowrap">
+                <button type="button" class="btn alt" style="padding:2px 8px;font-size:11px" onclick="editTask(<%= JSON.stringify(a) %>)">Edit</button>
+                <form method="post" action="/builder/delete/<%= a.activity_id %>" style="display:inline" onsubmit="return confirm('Delete activity <%= a.activity_id %>?')">
+                  <button type="submit" class="btn alt" style="padding:2px 6px;font-size:11px;color:var(--critical);border-color:var(--critical)">✕</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">
+              No tasks currently defined. Use the form above to add your first construction task, or select a preset template!
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function() {
+  const form = document.getElementById('task-form');
+  const formTitle = document.getElementById('form-title');
+  const btnSubmit = document.getElementById('btn-submit');
+  const btnCancel = document.getElementById('btn-cancel');
+  const editBadge = document.getElementById('edit-badge');
+  const editIdDisplay = document.getElementById('edit-id-display');
+
+  const inpId = document.getElementById('inp-id');
+  const inpWbs = document.getElementById('inp-wbs');
+  const inpName = document.getElementById('inp-name');
+  const inpType = document.getElementById('inp-type');
+  const inpStart = document.getElementById('inp-start');
+  const inpEnd = document.getElementById('inp-end');
+  const inpPreds = document.getElementById('inp-preds');
+  const inpRes = document.getElementById('inp-res');
+  const inpCrew = document.getElementById('inp-crew');
+  const inpQty = document.getElementById('inp-qty');
+  const inpUnit = document.getElementById('inp-unit');
+  const inpCost = document.getElementById('inp-cost');
+  const inpCrashDur = document.getElementById('inp-crash-dur');
+  const inpCrashCost = document.getElementById('inp-crash-cost');
+  const inpProg = document.getElementById('inp-prog');
+  const inpDelay = document.getElementById('inp-delay');
+
+  const calcWd = document.getElementById('calc-wd');
+  const calcSpan = document.getElementById('calc-span');
+  const calcMonsoon = document.getElementById('calc-monsoon');
+
+  // Live working days computation on date input change
+  let timer = null;
+  function updateLiveWorkingDays() {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const s = inpStart.value;
+      const e = inpEnd.value;
+      if (!s || !e) return;
+      try {
+        const res = await fetch(`/api/calendar/calc-days?start_date=${s}&end_date=${e}`);
+        if (res.ok) {
+          const data = await res.json();
+          calcWd.textContent = `${data.working_days} working days`;
+          calcSpan.textContent = `${data.calendar_days} cal. days`;
+          calcMonsoon.textContent = `${Math.round(data.monsoon_exposure * 100)}% monsoon`;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 150);
+  }
+
+  inpStart.addEventListener('change', updateLiveWorkingDays);
+  inpEnd.addEventListener('change', updateLiveWorkingDays);
+  updateLiveWorkingDays();
+
+  // Populate form for editing
+  window.editTask = function(task) {
+    form.action = '/builder/update/' + encodeURIComponent(task.activity_id);
+    formTitle.textContent = '✎ Edit Construction Task';
+    btnSubmit.textContent = '✓ Save Changes to ' + task.activity_id;
+    btnSubmit.style.background = 'var(--accent)';
+    btnSubmit.style.borderColor = 'var(--accent)';
+    btnCancel.style.display = 'inline-block';
+    editBadge.style.display = 'inline-block';
+    editIdDisplay.textContent = task.activity_id;
+
+    inpId.value = task.activity_id;
+    inpId.readOnly = true;
+    inpId.style.background = '#f0ebe1';
+    inpWbs.value = task.wbs || '';
+    inpName.value = task.name || '';
+    inpType.value = task.type || 'STRUCTURE';
+    inpStart.value = task.baseline_start || task.start_date || '';
+    inpEnd.value = task.baseline_finish || task.end_date || '';
+    inpPreds.value = task.predecessors || '';
+    inpRes.value = task.resource || 'HELPER';
+    inpCrew.value = task.crew_size || 6;
+    inpQty.value = task.quantity !== undefined ? task.quantity : 100;
+    inpUnit.value = task.unit || 'm3';
+    inpCost.value = task.normal_cost !== undefined ? task.normal_cost : 50000;
+    inpCrashDur.value = task.crash_duration || '';
+    inpCrashCost.value = task.crash_cost || '';
+    inpProg.value = task.percent_complete || 0;
+    inpDelay.value = task.injected_days || task.actual_delay_days || 0;
+
+    updateLiveWorkingDays();
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  window.resetForm = function() {
+    form.action = '/builder/add';
+    formTitle.textContent = '＋ Add Construction Task';
+    btnSubmit.textContent = '＋ Add Task to Schedule';
+    btnSubmit.style.background = 'var(--blue)';
+    btnSubmit.style.borderColor = 'var(--blue)';
+    btnCancel.style.display = 'none';
+    editBadge.style.display = 'none';
+
+    inpId.value = '';
+    inpId.readOnly = false;
+    inpId.style.background = '#fff';
+    inpName.value = '';
+    inpPreds.value = '';
+    updateLiveWorkingDays();
+  };
+
+  window.addPredHelper = function() {
+    const sel = document.getElementById('pred-selector');
+    const typeSel = document.getElementById('pred-type-sel');
+    const lagSel = document.getElementById('pred-lag-sel');
+    const predId = sel.value;
+    if (!predId) return;
+
+    let linkStr = predId;
+    const type = typeSel.value;
+    const lag = parseInt(lagSel.value, 10) || 0;
+    if (type !== 'FS' || lag !== 0) {
+      linkStr += `:${type}${lag !== 0 ? lag : ''}`;
+    }
+
+    const cur = inpPreds.value.trim();
+    if (cur) {
+      const parts = cur.split(',').map(s => s.trim());
+      if (!parts.includes(linkStr)) {
+        inpPreds.value = cur + ', ' + linkStr;
+      }
+    } else {
+      inpPreds.value = linkStr;
+    }
+  };
+
+  // Filter Table
+  window.filterTable = function() {
+    const q = document.getElementById('task-search').value.toLowerCase();
+    const type = document.getElementById('type-filter').value;
+    const critOnly = document.getElementById('crit-only').checked;
+
+    const rows = document.querySelectorAll('#tasks-table tbody tr');
+    rows.forEach(r => {
+      if (r.children.length < 5) return;
+      const text = r.textContent.toLowerCase();
+      const rType = r.dataset.type;
+      const isCrit = r.dataset.critical === '1';
+
+      const matchQ = !q || text.includes(q);
+      const matchType = type === 'all' || rType === type;
+      const matchCrit = !critOnly || isCrit;
+
+      r.style.display = (matchQ && matchType && matchCrit) ? '' : 'none';
+    });
+  };
+})();
+</script>
+
+<%- include('partials/footer') %>

@@ -125,4 +125,23 @@ export class WorkingCalendar {
     }
     return hits / n;
   }
+
+  public workingDaysBetween(startDate: string, endDate: string): number {
+    if (!startDate || !endDate) return 1;
+    if (endDate < startDate) return 1;
+    this.extend(undefined, endDate);
+    let count = 0;
+    for (const day of this._days) {
+      if (day >= startDate && day <= endDate) {
+        count++;
+      }
+    }
+    return Math.max(1, count);
+  }
+
+  public addWorkingDays(startDate: string, durationWd: number): string {
+    const startOff = this.offsetOf(startDate);
+    const endOff = startOff + Math.max(1, durationWd);
+    return this.finishDate(endOff);
+  }
 }
