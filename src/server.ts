@@ -7,6 +7,8 @@ import {
   CycleData,
   getScheduleState,
   addScheduleTask,
+  batchAddScheduleTasks,
+  parseBatchSlotText,
   updateScheduleTask,
   deleteScheduleTask,
   resetScheduleTasks,
@@ -148,6 +150,21 @@ app.post('/builder/add', (req: Request, res: Response) => {
     res.redirect('/builder?msg=' + encodeURIComponent('Task added successfully to schedule'));
   } catch (err: any) {
     res.redirect('/builder?error=' + encodeURIComponent(err.message || 'Error adding task'));
+  }
+});
+
+app.post('/builder/batch', (req: Request, res: Response) => {
+  try {
+    const rawText = (req.body.slot_text as string) || '';
+    const tasks = parseBatchSlotText(rawText);
+    if (tasks.length === 0) {
+      throw new Error('No valid task rows found in slot. Provide at least: Task Name, Start Date, End Date');
+    }
+    const added = batchAddScheduleTasks(tasks);
+    cache.clear();
+    res.redirect('/builder?msg=' + encodeURIComponent(`Added ${added.length} tasks from custom values slot`));
+  } catch (err: any) {
+    res.redirect('/builder?error=' + encodeURIComponent(err.message || 'Error processing slot values'));
   }
 });
 

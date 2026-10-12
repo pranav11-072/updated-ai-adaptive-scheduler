@@ -210,6 +210,155 @@
         <button type="button" class="alt" onclick="addPredHelper()" style="padding:4px 8px;font-size:12px">+ Link</button>
       </div>
     </div>
+
+    <!-- CUSTOM VALUE SLOT COMPONENT -->
+    <div class="card slot-card" id="custom-slot-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="color:var(--ink);font-size:13px">⚡ Custom Value Slot (Quick / Batch Input)</b>
+        <span class="note" style="font-size:11px">Paste or enter your custom values</span>
+      </div>
+      <p class="note" style="margin:0 0 8px;font-size:11.5px">
+        Type your own values below (one task per line). Format: <code>Task Name, Start Date, End Date, [Type], [Resource], [Crew], [Cost], [Predecessors]</code>
+      </p>
+
+      <form method="post" action="/builder/batch" id="slot-batch-form">
+        <textarea name="slot_text" id="slot-text" rows="3" class="slot-textarea" placeholder="Tower Crane Foundation, 2026-05-18, 2026-05-26, SUBSTRUCTURE, MASON, 8, 75000, A020
+Underground Stormwater Tank, 2026-05-26, 2026-06-06, SUBSTRUCTURE, EXC, 4, 90000, A030"></textarea>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button type="submit" style="font-size:12px;padding:5px 12px;background:var(--blue);border-color:var(--blue)">⚡ Import Slot Tasks into Schedule</button>
+          <button type="button" class="alt" style="font-size:12px;padding:5px 10px" onclick="transferSlotToMainForm()">⟵ Fill Form from Slot</button>
+          <button type="button" class="alt" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('slot-text').value=''">Clear Slot</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- EXAMPLE CASES BELOW THE SLOT -->
+    <div class="example-cases-container">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
+        <b style="font-size:13px;color:var(--ink)">📚 Construction Example Cases</b>
+        <span class="note" style="font-size:11px">Click to load into slot or add directly</span>
+      </div>
+
+      <!-- Example Case 1 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">1. Deep Shoring &amp; Bulk Excavation</b>
+          <span class="chip low" style="font-size:10px">SUBSTRUCTURE</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-05-18 → 2026-05-28 (9 wd)</span>
+          <span>EXC (4 crew)</span>
+          <span>1,200 m3</span>
+          <span>₹85,000</span>
+          <span>Pred: A020</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Heavy earthmoving and retaining shoring for basement footings with excavator operators.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(0, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(0, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+
+      <!-- Example Case 2 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">2. 2nd Floor Monolithic Slab &amp; Beam Pour</b>
+          <span class="chip medium" style="font-size:10px">STRUCTURE</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-06-08 → 2026-06-18 (9 wd)</span>
+          <span>MIXER (6 crew)</span>
+          <span>220 m3</span>
+          <span>₹180,000</span>
+          <span>Pred: A240</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Staged structural RCC slab concreting with stationary pump and compaction crew.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(1, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(1, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+
+      <!-- Example Case 3 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">3. Monsoon Exposed Basement Waterproofing</b>
+          <span class="chip critical" style="font-size:10px">SUBSTRUCTURE</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-07-13 → 2026-07-25 (11 wd)</span>
+          <span>HELPER (8 crew)</span>
+          <span>650 m2</span>
+          <span>₹70,000</span>
+          <span>Pred: A120</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Peak monsoon scheduled task testing weather risk prediction &amp; rainwater dewatering.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(2, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(2, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+
+      <!-- Example Case 4 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">4. Vertical Plumbing Risers &amp; Drainage Stacks</b>
+          <span class="chip high" style="font-size:10px">MEP</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-07-06 → 2026-07-16 (9 wd)</span>
+          <span>PLUM (6 crew)</span>
+          <span>1 LS</span>
+          <span>₹95,000</span>
+          <span>Pred: A190:FS4</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Multi-floor cast iron soil stacks, vents, and pressure testing across vertical ducts.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(3, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(3, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+
+      <!-- Example Case 5 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">5. High-Voltage Substation &amp; Busduct Conduit</b>
+          <span class="chip medium" style="font-size:10px">MEP</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-08-10 → 2026-08-22 (11 wd)</span>
+          <span>ELEC (8 crew)</span>
+          <span>1 LS</span>
+          <span>₹140,000</span>
+          <span>Pred: A310:FS2</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Main distribution boards, busducts, and transformer tie-ins with certified technicians.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(4, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(4, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+
+      <!-- Example Case 6 -->
+      <div class="example-case-card">
+        <div class="example-case-header">
+          <b style="font-size:12.5px;color:var(--ink)">6. Vitrified Floor Tiling &amp; Skirting Finishes</b>
+          <span class="chip low" style="font-size:10px">FINISH</span>
+        </div>
+        <div class="example-case-meta">
+          <span>2026-09-01 → 2026-09-15 (12 wd)</span>
+          <span>TILER (10 crew)</span>
+          <span>850 m2</span>
+          <span>₹120,000</span>
+          <span>Pred: A370</span>
+        </div>
+        <div class="note" style="font-size:11px;margin-bottom:8px">Laser-level bedding mortar, 600x600 vitrified tile laying, epoxy grouting &amp; skirting.</div>
+        <div class="example-case-actions">
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px" onclick="loadExampleCase(5, false)">↳ Load into Slot &amp; Form</button>
+          <button type="button" class="btn alt" style="font-size:11px;padding:2px 8px;color:var(--blue);border-color:var(--blue)" onclick="loadExampleCase(5, true)">＋ Add to Schedule</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -388,6 +537,166 @@
 
     updateLiveWorkingDays();
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const EXAMPLE_CASES = [
+    {
+      name: 'Deep Shoring & Bulk Excavation',
+      wbs: '1.2',
+      activity_type: 'SUBSTRUCTURE',
+      start_date: '2026-05-18',
+      end_date: '2026-05-28',
+      resource: 'EXC',
+      crew_size: 4,
+      quantity: 1200,
+      unit: 'm3',
+      normal_cost: 85000,
+      crash_duration: 6,
+      crash_cost: 115000,
+      predecessors: 'A020',
+      percent_complete: 0,
+      actual_delay_days: 0
+    },
+    {
+      name: '2nd Floor Monolithic Slab & Beam Pour',
+      wbs: '2.4',
+      activity_type: 'STRUCTURE',
+      start_date: '2026-06-08',
+      end_date: '2026-06-18',
+      resource: 'MIXER',
+      crew_size: 6,
+      quantity: 220,
+      unit: 'm3',
+      normal_cost: 180000,
+      crash_duration: 6,
+      crash_cost: 235000,
+      predecessors: 'A240',
+      percent_complete: 0,
+      actual_delay_days: 0
+    },
+    {
+      name: 'Monsoon Exposed Basement Waterproofing',
+      wbs: '1.5',
+      activity_type: 'SUBSTRUCTURE',
+      start_date: '2026-07-13',
+      end_date: '2026-07-25',
+      resource: 'HELPER',
+      crew_size: 8,
+      quantity: 650,
+      unit: 'm2',
+      normal_cost: 70000,
+      crash_duration: 8,
+      crash_cost: 92000,
+      predecessors: 'A120',
+      percent_complete: 0,
+      actual_delay_days: 0
+    },
+    {
+      name: 'Vertical Plumbing Risers & Drainage Stacks',
+      wbs: '4.2',
+      activity_type: 'MEP',
+      start_date: '2026-07-06',
+      end_date: '2026-07-16',
+      resource: 'PLUM',
+      crew_size: 6,
+      quantity: 1,
+      unit: 'LS',
+      normal_cost: 95000,
+      crash_duration: 7,
+      crash_cost: 120000,
+      predecessors: 'A190:FS4',
+      percent_complete: 0,
+      actual_delay_days: 0
+    },
+    {
+      name: 'High-Voltage Substation & Busduct Conduit',
+      wbs: '4.5',
+      activity_type: 'MEP',
+      start_date: '2026-08-10',
+      end_date: '2026-08-22',
+      resource: 'ELEC',
+      crew_size: 8,
+      quantity: 1,
+      unit: 'LS',
+      normal_cost: 140000,
+      crash_duration: 7,
+      crash_cost: 185000,
+      predecessors: 'A310:FS2',
+      percent_complete: 0,
+      actual_delay_days: 0
+    },
+    {
+      name: 'Vitrified Floor Tiling & Skirting Finishes',
+      wbs: '5.2',
+      activity_type: 'FINISH',
+      start_date: '2026-09-01',
+      end_date: '2026-09-15',
+      resource: 'TILER',
+      crew_size: 10,
+      quantity: 850,
+      unit: 'm2',
+      normal_cost: 120000,
+      crash_duration: 9,
+      crash_cost: 155000,
+      predecessors: 'A370',
+      percent_complete: 0,
+      actual_delay_days: 0
+    }
+  ];
+
+  window.loadExampleCase = function(idx, autoSubmit) {
+    const item = EXAMPLE_CASES[idx];
+    if (!item) return;
+
+    // Fill the slot textarea
+    const slotEl = document.getElementById('slot-text');
+    slotEl.value = `${item.name}, ${item.start_date}, ${item.end_date}, ${item.activity_type}, ${item.resource}, ${item.crew_size}, ${item.normal_cost}, ${item.predecessors}`;
+
+    // Fill the form fields
+    inpName.value = item.name;
+    inpWbs.value = item.wbs;
+    inpType.value = item.activity_type;
+    inpStart.value = item.start_date;
+    inpEnd.value = item.end_date;
+    inpRes.value = item.resource;
+    inpCrew.value = item.crew_size;
+    inpQty.value = item.quantity;
+    inpUnit.value = item.unit;
+    inpCost.value = item.normal_cost;
+    inpCrashDur.value = item.crash_duration || '';
+    inpCrashCost.value = item.crash_cost || '';
+    inpPreds.value = item.predecessors;
+    inpProg.value = item.percent_complete;
+    inpDelay.value = item.actual_delay_days;
+
+    updateLiveWorkingDays();
+
+    if (autoSubmit) {
+      form.action = '/builder/add';
+      form.submit();
+    } else {
+      document.getElementById('custom-slot-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  window.transferSlotToMainForm = function() {
+    const raw = document.getElementById('slot-text').value.trim();
+    if (!raw) return;
+    const firstLine = raw.split(/\r?\n/)[0];
+    const parts = firstLine.split(/[,\t]/).map(p => p.trim());
+    if (parts.length >= 3) {
+      inpName.value = parts[0];
+      inpStart.value = parts[1];
+      inpEnd.value = parts[2];
+      if (parts[3]) inpType.value = parts[3].toUpperCase();
+      if (parts[4]) inpRes.value = parts[4].toUpperCase();
+      if (parts[5]) inpCrew.value = parseInt(parts[5], 10) || 4;
+      if (parts[6]) inpCost.value = parseFloat(parts[6]) || 50000;
+      if (parts[7]) inpPreds.value = parts[7];
+      if (parts[8]) inpWbs.value = parts[8];
+      updateLiveWorkingDays();
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   window.resetForm = function() {

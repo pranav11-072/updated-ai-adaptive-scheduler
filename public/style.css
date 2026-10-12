@@ -53,4 +53,15 @@ details summary{cursor:pointer;color:var(--blue)}
 .form-card label{display:flex;flex-direction:column;font-size:11.5px;color:var(--ink);gap:3px;font-weight:500}
 .form-card input,.form-card select{font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:2px;background:#fff;transition:border-color .15s}
 .form-card input:focus,.form-card select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}
+.slot-card{border:1px solid var(--line);background:var(--card);margin-top:12px}
+.slot-textarea{width:100%;font-family:ui-monospace,"SFMono-Regular",Consolas,monospace;font-size:12px;padding:8px;border:1px solid var(--line);border-radius:2px;background:#fff;line-height:1.45;resize:vertical}
+.slot-textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}
+.example-cases-container{margin-top:14px}
+.example-case-card{border:1px solid var(--line);background:#faf8f2;padding:10px 12px;margin-bottom:8px;border-radius:2px;transition:border-color .15s,box-shadow .15s}
+.example-case-card:hover{border-color:var(--blue);background:#fff}
+.example-case-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.example-case-meta{display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:6px}
+.example-case-meta span{background:#f0ebe0;padding:1px 6px;border-radius:2px;font-family:ui-monospace,monospace}
+.example-case-actions{display:flex;gap:6px;justify-content:flex-end}
+
 

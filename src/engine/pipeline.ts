@@ -303,6 +303,39 @@ export function addScheduleTask(input: TaskInput): Activity {
   return newActivity;
 }
 
+export function batchAddScheduleTasks(tasks: TaskInput[]): Activity[] {
+  const added: Activity[] = [];
+  for (const t of tasks) {
+    if (t.name && t.name.trim()) {
+      const act = addScheduleTask(t);
+      added.push(act);
+    }
+  }
+  return added;
+}
+
+export function parseBatchSlotText(rawText: string): TaskInput[] {
+  const lines = rawText.trim().split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
+  const tasks: TaskInput[] = [];
+  for (const line of lines) {
+    const parts = line.split(/[,\t]/).map(p => p.trim());
+    if (parts.length >= 3) {
+      tasks.push({
+        name: parts[0],
+        start_date: parts[1],
+        end_date: parts[2],
+        activity_type: (parts[3] || 'STRUCTURE').toUpperCase(),
+        resource: (parts[4] || 'HELPER').toUpperCase(),
+        crew_size: parts[5] ? parseInt(parts[5], 10) : 4,
+        normal_cost: parts[6] ? parseFloat(parts[6]) : 50000,
+        predecessors: parts[7] || '',
+        wbs: parts[8] || '1.0'
+      });
+    }
+  }
+  return tasks;
+}
+
 export function updateScheduleTask(id: string, input: TaskInput): Activity {
   const state = getScheduleState();
   const idx = state.activities.findIndex(a => a.activity_id === id);
