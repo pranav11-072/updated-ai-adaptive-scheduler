@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+<div class="controls">
+  <label>Zoom <input id="zoom" type="range" min="1.5" max="14" step="0.5" value="4"></label>
+  <label>Filter <select id="filter">
+    <option value="all">All activities</option>
+    <option value="critical">Critical path</option>
+    <option value="near">Near-critical</option>
+    <option value="atrisk">High / critical risk</option>
+    <option value="delayed">Adapted (delay injected)</option>
+  </select></label>
+  <label>Search <input id="find" placeholder="name or id"></label>
+  <label><input id="base" type="checkbox" checked> Baseline</label>
+  <span id="count" class="note"></span>
+  <a href="/builder<%= query ? '?' + query : '' %>" class="btn alt" style="margin-left:auto;font-size:12px;padding:4px 10px">＋ Input / Edit Tasks</a>
+</div>
+<div class="legend">
+  <span><i style="background:#cfd8dc"></i>Baseline</span>
+  <span><i style="background:#43a047"></i>Low</span>
+  <span><i style="background:#ffb300"></i>Medium</span>
+  <span><i style="background:#fb8c00"></i>High</span>
+  <span><i style="background:#e53935"></i>Critical risk</span>
+  <span><i style="border:2px solid #d50000"></i>Critical path (red outline)</span>
+  <span>Dashed blue line = data date. Axis = working-day offsets.</span>
+</div>
+<div id="gantt" class="gantt-wrap"></div>
+<%- include('partials/footer') %>

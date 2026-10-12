@@ -9,11 +9,30 @@ import { computePredictionsAndExplanations, PredictionResult, ExplanationResult 
 import { adapt, AdaptationResult } from './adaptation';
 import { computeDailyDemand, computeProgress, ProgressResult, ResourceSummary, OverAllocationWindow } from './resources';
 import { generateRecommendations, RecommendationRow } from './recommend';
+import {
+  DEFAULT_PROJECT_JSON,
+  DEFAULT_ACTIVITIES_CSV,
+  DEFAULT_DEPENDENCIES_CSV,
+  DEFAULT_FACTORS_CSV
+} from './defaultData';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, '../..');
-const PROJECT_DIR = path.join(ROOT, 'data/project');
+
+function findProjectDir(): string {
+  const candidates = [
+    path.join(process.cwd(), 'data/project'),
+    path.resolve(__dirname, '../../data/project'),
+    path.resolve(__dirname, '../data/project'),
+    path.resolve(__dirname, './data/project'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, 'project.json'))) {
+      return c;
+    }
+  }
+  return path.join(process.cwd(), 'data/project');
+}
 
 export const SYNTHETIC_NOTICE =
   'All case-study data and all model training data are SYNTHETIC. Model scores measured on ' +
@@ -61,21 +80,32 @@ function parseCSV(content: string): Array<Record<string, string>> {
   return rows;
 }
 
-export function loadProjectData(projectDir = PROJECT_DIR): {
+export function loadProjectData(projectDir?: string): {
   project: ProjectMetadata;
   activities: Activity[];
   dependencies: Dependency[];
   riskRegister: RiskRegister;
 } {
-  const metaPath = path.join(projectDir, 'project.json');
-  const actPath = path.join(projectDir, 'activities.csv');
-  const depPath = path.join(projectDir, 'dependencies.csv');
-  const factorPath = path.join(projectDir, 'delay_factor_status.csv');
+  const dir = projectDir || findProjectDir();
+  const metaPath = path.join(dir, 'project.json');
+  const actPath = path.join(dir, 'activities.csv');
+  const depPath = path.join(dir, 'dependencies.csv');
+  const factorPath = path.join(dir, 'delay_factor_status.csv');
 
-  const metaRaw = fs.readFileSync(metaPath, 'utf-8');
+  let metaRaw = DEFAULT_PROJECT_JSON;
+  if (fs.existsSync(metaPath)) {
+    try {
+      metaRaw = fs.readFileSync(metaPath, 'utf-8');
+    } catch (_) {}
+  }
   const meta: ProjectMetadata = JSON.parse(metaRaw);
 
-  const actRaw = fs.readFileSync(actPath, 'utf-8');
+  let actRaw = DEFAULT_ACTIVITIES_CSV;
+  if (fs.existsSync(actPath)) {
+    try {
+      actRaw = fs.readFileSync(actPath, 'utf-8');
+    } catch (_) {}
+  }
   const actRows = parseCSV(actRaw);
   const activities: Activity[] = actRows.map(r => {
     const dur = parseInt(r.duration, 10) || 0;
@@ -110,7 +140,12 @@ export function loadProjectData(projectDir = PROJECT_DIR): {
     };
   });
 
-  const depRaw = fs.readFileSync(depPath, 'utf-8');
+  let depRaw = DEFAULT_DEPENDENCIES_CSV;
+  if (fs.existsSync(depPath)) {
+    try {
+      depRaw = fs.readFileSync(depPath, 'utf-8');
+    } catch (_) {}
+  }
   const depRows = parseCSV(depRaw);
   const dependencies: Dependency[] = depRows.map(r => ({
     predecessor: r.predecessor,
@@ -121,13 +156,16 @@ export function loadProjectData(projectDir = PROJECT_DIR): {
 
   const factorScores: Record<string, number> = {};
   const factorNotes: Record<string, string> = {};
+  let factorRaw = DEFAULT_FACTORS_CSV;
   if (fs.existsSync(factorPath)) {
-    const factorRaw = fs.readFileSync(factorPath, 'utf-8');
-    const factorRows = parseCSV(factorRaw);
-    for (const r of factorRows) {
-      factorScores[r.factor_id] = parseInt(r.score, 10) || 0;
-      factorNotes[r.factor_id] = r.note || '';
-    }
+    try {
+      factorRaw = fs.readFileSync(factorPath, 'utf-8');
+    } catch (_) {}
+  }
+  const factorRows = parseCSV(factorRaw);
+  for (const r of factorRows) {
+    factorScores[r.factor_id] = parseInt(r.score, 10) || 0;
+    factorNotes[r.factor_id] = r.note || '';
   }
 
   const register = new RiskRegister(factorScores, factorNotes);

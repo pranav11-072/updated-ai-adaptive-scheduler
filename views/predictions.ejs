@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<h2>Delay predictions</h2>
+<p class="note">Model trained on SYNTHETIC data<% if (c.model) { %>: <%= c.model.classifier %> (probability) + <%= c.model.regressor %> (delay days); tuned at-risk threshold <%= c.model.at_risk_threshold %><% } %>. <a href="/export/predictions.csv?<%= query %>">Export CSV</a></p>
+<% if (c.model) { %>
+<div class="scroll"><table><tr><th>ID</th><th>Activity</th><th>Type</th><th>P(delay)</th><th>Risk</th><th>Predicted delay (d)</th><th>Injected (d)</th><th>SHAP drivers (factor share of positive SHAP)</th></tr>
+<% const sortedActs = c.activities.slice().sort((a,b) => (b.p_delay || 0) - (a.p_delay || 0)); %>
+<% sortedActs.forEach(function(a) { %>
+<tr>
+  <td><%= a.activity_id %></td>
+  <td><%= a.name %> <% if (a.critical) { %><span class="tag">critical</span><% } %></td>
+  <td><%= a.type %></td>
+  <td class="num"><%= a.p_delay !== null ? a.p_delay.toFixed(3) : '-' %></td>
+  <td><span class="chip <%= a.risk_band %>"><%= a.risk_band %></span></td>
+  <td class="num"><%= a.predicted_delay_days %></td>
+  <td class="num"><%= a.injected_days %><%= a.injected_source === 'observed' ? ' (obs.)' : '' %></td>
+  <td>
+    <%= a.drivers %>
+    <% if (c.explanations && c.explanations[a.activity_id]) { %>
+    <details>
+      <summary>top SHAP features</summary>
+      <% (c.explanations[a.activity_id].top_features || []).forEach(function(t) { %>
+      <div class="note"><%= t.feature %> = <%= t.value.toFixed(2) %> → <%= (t.shap >= 0 ? '+' : '') + t.shap.toFixed(3) %></div>
+      <% }); %>
+    </details>
+    <% } %>
+  </td>
+</tr>
+<% }); %>
+</table></div>
+<% } else { %>
+<p>No ML model available. Run <code>adaptive-scheduler train</code>.</p>
+<% } %>
+<%- include('partials/footer') %>

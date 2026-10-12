@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+<% const k = c.kpis; %>
+<div class="grid g4">
+<div class="card kpi"><div class="l">Baseline completion</div><div class="v"><%= k.baseline_completion %></div><div class="s"><%= k.baseline_duration_wd %> working days</div></div>
+<div class="card kpi"><div class="l">Current forecast</div><div class="v"><%= k.current_completion %></div><div class="s"><%= k.current_duration_wd %> working days</div></div>
+<div class="card kpi"><div class="l">Schedule variance</div><div class="v <%= k.schedule_variance_wd > 0 ? 'bad' : 'ok' %>"><%= (k.schedule_variance_wd > 0 ? '+' : '') + k.schedule_variance_wd %> wd</div><div class="s"><%= (k.calendar_slip_days > 0 ? '+' : '') + k.calendar_slip_days %> calendar days</div></div>
+<div class="card kpi"><div class="l">Critical-path migration</div><div class="v"><%= k.critical_path_migrated ? 'YES' : 'No' %></div><div class="s">new: <%= k.newly_critical.join(', ') || 'none' %> · left: <%= k.left_critical.join(', ') || 'none' %></div></div>
+<div class="card kpi"><div class="l">Progress (planned / actual)</div><div class="v"><%= k.planned_pct.toFixed(1) %> / <%= k.actual_pct.toFixed(1) %> %</div><div class="s">variance <%= (k.progress_variance_pct > 0 ? '+' : '') + k.progress_variance_pct.toFixed(1) %> pts</div></div>
+<div class="card kpi"><div class="l">Critical / near-critical</div><div class="v"><%= k.critical_activities %> / <%= k.near_critical_count %></div><div class="s"><%= k.eroded_float_count %> with float erosion</div></div>
+<div class="card kpi"><div class="l">At-risk activities</div><div class="v"><%= k.at_risk_count !== null ? k.at_risk_count : 'n/a' %></div><div class="s"><%= k.adapted_activities %> adapted · <%= k.recommendation_count %> recommendations</div></div>
+<div class="card kpi"><div class="l">Composite risk index</div><div class="v"><%= c.composite_risk_index.toFixed(2) %></div><div class="s">RII provisional (no survey yet)</div></div></div>
+<div class="grid g2" style="margin-top:14px"><div class="card"><b>Risk distribution (activities by band of P(delay))</b><div id="risk-dist" style="margin-top:8px"></div></div>
+<div class="card"><b>Forecast completion by cycle</b><table style="margin-top:8px"><tr><th>Cycle</th><th>Data date</th><th>Completion</th></tr>
+<% (c.forecast_trend || []).forEach(function(p) { %><tr><td><%= p.label %></td><td class="num"><%= p.data_date || '' %></td><td class="num"><%= p.completion_date %></td></tr><% }); %></table></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px">
+  <h2 style="margin:0;border:none;padding:0">Highest-risk activities</h2>
+  <a href="/builder<%= query ? '?' + query : '' %>" class="btn alt" style="font-size:11.5px;padding:3px 8px">＋ Add Task / Open Schedule Builder →</a>
+</div>
+<% if (c.model) { %>
+<div class="scroll" style="max-height:none"><table><tr><th>ID</th><th>Activity</th><th>P(delay)</th><th>Risk</th><th>Pred. delay (d)</th><th>Injected (d)</th><th>Critical</th><th>Main drivers</th></tr>
+<% const sortedActs = c.activities.slice().sort((a,b) => (b.p_delay || 0) - (a.p_delay || 0)).slice(0, 8); %>
+<% sortedActs.forEach(function(a) { %><tr><td><%= a.activity_id %></td><td><%= a.name %></td><td class="num"><%= a.p_delay !== null ? a.p_delay.toFixed(2) : '-' %></td><td><span class="chip <%= a.risk_band %>"><%= a.risk_band %></span></td><td class="num"><%= a.predicted_delay_days %></td><td class="num"><%= a.injected_days %></td><td><% if (a.critical) { %><span class="tag">critical</span><% } %></td><td><%= a.drivers %></td></tr><% }); %></table></div>
+<% } else { %>
+<p class="note">No ML model available. Run <code>adaptive-scheduler train</code>.</p>
+<% } %>
+<%- include('partials/footer') %>

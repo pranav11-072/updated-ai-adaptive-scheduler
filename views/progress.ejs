@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<% const p = c.progress; %>
+<div class="grid g4">
+<div class="card kpi"><div class="l">Planned</div><div class="v"><%= p.planned_pct.toFixed(1) %> %</div><div class="s"><%= p.weighting %>-weighted</div></div>
+<div class="card kpi"><div class="l">Actual</div><div class="v"><%= p.actual_pct.toFixed(1) %> %</div><div class="s">data date <%= p.data_date %></div></div>
+<div class="card kpi"><div class="l">Variance</div><div class="v <%= p.variance_pct < 0 ? 'bad' : 'ok' %>"><%= (p.variance_pct >= 0 ? '+' : '') + p.variance_pct.toFixed(1) %> pts</div><div class="s">performance index <%= p.performance_index %></div></div>
+<div class="card kpi"><div class="l">Working days elapsed</div><div class="v"><%= p.elapsed_working_days %></div></div></div>
+<h2>S-curve</h2><div class="card"><div id="scurve"></div></div>
+<h2>Activities in progress or behind plan</h2><div class="scroll"><table><tr><th>ID</th><th>Activity</th><th>Planned %</th><th>Actual %</th><th>Variance</th></tr>
+<% const filteredActs = (p.activities || []).filter(a => a.planned_pct > 0 || a.actual_pct > 0).sort((a,b) => a.variance_pct - b.variance_pct); %>
+<% filteredActs.forEach(function(a) { %>
+<tr>
+  <td><%= a.activity_id %></td>
+  <td><%= a.name %></td>
+  <td class="num"><%= a.planned_pct %></td>
+  <td class="num"><%= a.actual_pct %></td>
+  <td class="num <%= a.variance_pct < 0 ? 'bad' : '' %>"><%= (a.variance_pct >= 0 ? '+' : '') + a.variance_pct.toFixed(1) %></td>
+</tr>
+<% }); %>
+</table></div>
+<p class="note"><a href="/export/progress.csv?<%= query %>">Export CSV</a></p>
+<%- include('partials/footer') %>

@@ -20,21 +20,40 @@ import { WorkingCalendar } from './engine/calendar';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = process.env.ROOT_DIR || process.cwd();
-const VIEWS_DIR = fs.existsSync(path.join(__dirname, 'views'))
-  ? path.join(__dirname, 'views')
-  : path.join(ROOT, 'src/views');
+
+const VIEWS_DIRS = [
+  path.join(process.cwd(), 'views'),
+  path.join(process.cwd(), 'src', 'views'),
+  path.resolve(__dirname, 'views'),
+  path.resolve(__dirname, '../views'),
+  path.resolve(__dirname, '../src/views'),
+  path.resolve(__dirname, '../../views'),
+  path.resolve(__dirname, '../../src/views'),
+].filter(d => fs.existsSync(d));
+
+if (VIEWS_DIRS.length === 0) {
+  VIEWS_DIRS.push(path.join(process.cwd(), 'views'), path.join(process.cwd(), 'src/views'));
+}
+
+const STATIC_DIRS = [
+  path.join(process.cwd(), 'public'),
+  path.resolve(__dirname, '../public'),
+  path.resolve(__dirname, '../../public'),
+].filter(d => fs.existsSync(d));
+const PUBLIC_DIR = STATIC_DIRS[0] || path.join(process.cwd(), 'public');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.set('view engine', 'ejs');
-app.set('views', VIEWS_DIR);
+app.set('views', VIEWS_DIRS);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Static file serving
-app.use('/static', express.static(path.join(ROOT, 'public')));
+app.use('/static', express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR));
 app.use('/figures', express.static(path.join(ROOT, 'artifacts/figures')));
 
 const PAGES: Array<[string, string, string]> = [
@@ -407,13 +426,17 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   if (req.path.startsWith('/api/')) {
     res.status(status).json({ error: message });
   } else {
-    res.status(status).render('error', {
-      c: null,
-      pages: PAGES,
-      active: '',
-      query: '',
-      message
-    });
+    try {
+      res.status(status).render('error', {
+        c: null,
+        pages: PAGES,
+        active: '',
+        query: '',
+        message
+      });
+    } catch (_renderErr) {
+      res.status(status).send(`<!doctype html><html><head><title>Adaptive Scheduler Error</title></head><body style="font-family:sans-serif;padding:2rem"><h1>Error (${status})</h1><p>${message}</p><p><a href="/">Return to Dashboard</a></p></body></html>`);
+    }
   }
 });
 

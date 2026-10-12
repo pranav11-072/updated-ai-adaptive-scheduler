@@ -1,0 +1,39 @@
+<%- include('partials/header') %>
+<h2>Resource utilisation (current schedule)</h2>
+<p class="note">Demand in resource-days against availability declared in project.json. <a href="/export/resources.csv?<%= query %>">Export CSV</a></p>
+<div class="scroll" style="max-height:none"><table><tr><th>Resource</th><th>Available</th><th>Peak demand</th><th>Resource-days</th><th>Mean active util. %</th><th>Util. % of project</th><th>Over-alloc. days</th><th>Shortage (res-days)</th></tr>
+<% (c.resources.summary || []).forEach(function(r) { %>
+<tr>
+  <td><%= r.resource %> – <%= r.name %></td>
+  <td class="num"><%= r.available %></td>
+  <td class="num <%= r.peak_demand > r.available ? 'bad' : '' %>"><%= Math.round(r.peak_demand) %></td>
+  <td class="num"><%= Math.round(r.resource_days) %></td>
+  <td class="num"><%= r.mean_active_utilisation_pct %></td>
+  <td class="num"><%= r.utilisation_pct %></td>
+  <td class="num"><%= r.over_allocated_days %></td>
+  <td class="num"><%= Math.round(r.shortage_resource_days) %></td>
+</tr>
+<% }); %>
+</table></div>
+<h2>Over-allocation windows</h2>
+<% if (c.resources.over_allocation_windows && c.resources.over_allocation_windows.length > 0) { %>
+<table><tr><th>Resource</th><th>From</th><th>To</th><th>Working days</th><th>Available</th><th>Peak demand</th><th>Peak shortage</th><th>Shortage (res-days)</th></tr>
+<% c.resources.over_allocation_windows.forEach(function(w) { %>
+<tr>
+  <td><%= w.resource %></td>
+  <td class="num"><%= w.start_date %></td>
+  <td class="num"><%= w.end_date %></td>
+  <td class="num"><%= w.working_days %></td>
+  <td class="num"><%= w.available %></td>
+  <td class="num"><%= Math.round(w.peak_demand) %></td>
+  <td class="num"><%= Math.round(w.peak_shortage) %></td>
+  <td class="num"><%= Math.round(w.shortage_resource_days) %></td>
+</tr>
+<% }); %>
+</table>
+<% } else { %>
+<p>No over-allocation.</p>
+<% } %>
+<h2>Daily demand vs availability (red = over-allocated)</h2>
+<div id="demand" class="grid g2"></div>
+<%- include('partials/footer') %>

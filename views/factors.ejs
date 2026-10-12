@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<h2>Delay factors and live risk register</h2>
+<div class="warn" style="background:#fff3e0;border-color:#e85d04">RII values are <b>PROVISIONAL</b> – the questionnaire survey has not been conducted; they are not survey-validated real-world values.</div>
+<p>Composite risk index (RII-weighted, normalised 0–4 scores): <b class="mono"><%= c.composite_risk_index.toFixed(3) %></b> · Dominant: <% c.dominant_factors.forEach(function(f, idx) { %><%= f[1] %> (score <%= f[2] %>)<%= idx < c.dominant_factors.length - 1 ? ', ' : '' %><% }); %></p>
+<table><tr><th>ID</th><th>Factor</th><th>RII (provisional)</th><th>Score 0–4</th><th></th><th>Note</th></tr>
+<% (c.factors || []).forEach(function(f) { %>
+<tr>
+  <td><%= f.factor_id %></td>
+  <td><%= f.factor %></td>
+  <td class="num"><%= f.rii.toFixed(2) %></td>
+  <td class="num"><%= f.score %></td>
+  <td style="width:160px"><div class="bar"><i style="width:<%= f.score * 25 %>%"></i></div></td>
+  <td><%= f.note %></td>
+</tr>
+<% }); %>
+</table>
+<%- include('partials/footer') %>
