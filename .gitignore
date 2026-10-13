@@ -1,3 +1,11 @@
+node_modules/
+.vercel/
+dist/
+.DS_Store
+bun.lock
+bun.lockb
+.env
+.env.local
 .venv/
 __pycache__/
 *.pyc

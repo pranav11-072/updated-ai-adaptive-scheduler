@@ -104,11 +104,19 @@ app.set('view engine', 'ejs');
 app.set('views', VIEWS_DIRS);
 
 // Normalize Vercel Serverless Function rewritten paths
+const ROUTE_PAGES = ['dashboard', 'builder', 'gantt', 'predictions', 'recommendations', 'resources', 'progress', 'factors', 'reports'];
 app.use((req: Request, _res: Response, next: NextFunction) => {
   if (req.url === '/api' || req.url === '/api/') {
     req.url = '/';
   } else if (req.url.startsWith('/api/index')) {
     req.url = req.url.replace(/^\/api\/index/, '') || '/';
+  } else {
+    for (const p of ROUTE_PAGES) {
+      if (req.url === `/api/${p}` || req.url.startsWith(`/api/${p}?`) || req.url.startsWith(`/api/${p}/`)) {
+        req.url = req.url.replace(/^\/api/, '');
+        break;
+      }
+    }
   }
   next();
 });

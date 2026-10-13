@@ -5,10 +5,11 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "test": "tsx tests/verify.ts"
   },
   "dependencies": {
-    "ejs": "^7.0.1",
+    "ejs": "^3.1.10",
     "express": "^5.2.1",
     "tsx": "^4.23.15"
   },
