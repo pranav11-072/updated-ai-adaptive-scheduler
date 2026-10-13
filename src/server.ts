@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import ejs from 'ejs';
 import {
   runCycle,
   CycleData,
@@ -16,6 +17,8 @@ import {
   loadScheduleTemplate
 } from './engine/pipeline';
 import { WorkingCalendar } from './engine/calendar';
+import { EMBEDDED_VIEWS } from './views/embeddedViews';
+import { EMBEDDED_CSS, EMBEDDED_JS } from './views/embeddedAssets';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,13 +48,88 @@ const PUBLIC_DIR = STATIC_DIRS[0] || path.join(process.cwd(), 'public');
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+function renderEmbeddedTemplate(viewName: string, data: any): string {
+  let key = viewName.replace(/\\/g, '/');
+  const match = key.match(/(?:views\/|src\/views\/)?([a-zA-Z0-9_\/-]+?)(?:\.ejs)?$/);
+  const cleanKey = match ? match[1] : key.replace(/\.ejs$/, '');
+
+  const templateStr = EMBEDDED_VIEWS[cleanKey] || EMBEDDED_VIEWS[key];
+  if (!templateStr) {
+    throw new Error(`View template "${viewName}" not found in embedded views`);
+  }
+
+  return ejs.render(templateStr, data, {
+    views: VIEWS_DIRS,
+    includer: (originalPath: string): any => {
+      const subKey = originalPath.replace(/\\/g, '/').replace(/^\.?\//, '').replace(/\.ejs$/, '');
+      if (EMBEDDED_VIEWS[subKey]) {
+        return { template: EMBEDDED_VIEWS[subKey] };
+      }
+      for (const d of VIEWS_DIRS) {
+        const full = path.join(d, originalPath.endsWith('.ejs') ? originalPath : originalPath + '.ejs');
+        if (fs.existsSync(full)) {
+          return { filename: full };
+        }
+      }
+      return { template: '' };
+    }
+  });
+}
+
+// In-memory + disk EJS engine
+app.engine('ejs', (filePath: string, options: any, callback: (err: any, str?: string) => void) => {
+  if (fs.existsSync(filePath)) {
+    return ejs.renderFile(filePath, options, (err, str) => {
+      if (!err && str) {
+        return callback(null, str);
+      }
+      try {
+        const rendered = renderEmbeddedTemplate(filePath, options);
+        return callback(null, rendered);
+      } catch (embErr) {
+        return callback(err || embErr);
+      }
+    });
+  }
+
+  try {
+    const rendered = renderEmbeddedTemplate(filePath, options);
+    return callback(null, rendered);
+  } catch (err) {
+    return callback(err);
+  }
+});
+
 app.set('view engine', 'ejs');
 app.set('views', VIEWS_DIRS);
+
+// Normalize Vercel Serverless Function rewritten paths
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  if (req.url === '/api' || req.url === '/api/') {
+    req.url = '/';
+  } else if (req.url.startsWith('/api/index')) {
+    req.url = req.url.replace(/^\/api\/index/, '') || '/';
+  }
+  next();
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Static file serving
+// Embedded static asset routes
+app.get(['/static/style.css', '/style.css'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(EMBEDDED_CSS);
+});
+
+app.get(['/static/app.js', '/app.js'], (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(EMBEDDED_JS);
+});
+
+// Static file serving fallbacks
 app.use('/static', express.static(PUBLIC_DIR));
 app.use(express.static(PUBLIC_DIR));
 app.use('/figures', express.static(path.join(ROOT, 'artifacts/figures')));
