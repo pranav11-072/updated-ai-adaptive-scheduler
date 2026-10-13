@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/*.ts": {
+    "api/index.ts": {
       "includeFiles": "views/**,src/views/**,public/**,artifacts/**,data/**"
     }
   },
