@@ -526,7 +526,11 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   }
 });
 
-if (!process.env.VERCEL) {
+const isMainModule = !process.env.VERCEL && process.argv[1] && (
+  process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js')
+);
+
+if (isMainModule) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Adaptive Scheduler server listening on http://0.0.0.0:${PORT}`);
   });
