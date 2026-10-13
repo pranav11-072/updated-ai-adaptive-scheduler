@@ -2,7 +2,7 @@ import { WorkingCalendar } from '../src/engine/calendar';
 import { CPMEngine } from '../src/engine/cpm';
 import { RiskRegister } from '../src/engine/delayFactors';
 import { runCycle, addScheduleTask, deleteScheduleTask, resetScheduleTasks, getScheduleState } from '../src/engine/pipeline';
-import handler from '../api/index';
+import app from '../src/server';
 
 console.log('=== STARTING AUTOMATED TEST SUITE ===');
 
@@ -64,11 +64,10 @@ console.log('=== STARTING AUTOMATED TEST SUITE ===');
   console.log('✓ Test 4: Schedule builder task operations passed');
 }
 
-// Test 5: Vercel Serverless Function Handler
-async function testServerlessRoutes() {
+// Test 5: Express Application HTTP Routes
+async function testAppRoutes() {
   const routes = [
     '/',
-    '/api',
     '/builder',
     '/gantt',
     '/predictions',
@@ -79,6 +78,12 @@ async function testServerlessRoutes() {
     '/reports',
     '/api/tasks',
     '/api/cycle',
+    '/api/calendar/calc-days?start_date=2026-05-04&end_date=2026-05-15',
+    '/export/schedule.csv',
+    '/export/predictions.csv',
+    '/export/progress.csv',
+    '/export/resources.csv',
+    '/export/recommendations.csv',
     '/static/style.css',
     '/static/app.js'
   ];
@@ -105,13 +110,13 @@ async function testServerlessRoutes() {
           resolve();
         }
       }
-      handler(req, res);
+      app(req as any, res as any);
     });
   }
-  console.log(`✓ Test 5: All ${routes.length} Vercel serverless routes verified (200 OK)`);
+  console.log(`✓ Test 5: All ${routes.length} HTTP routes verified (200 OK)`);
 }
 
-testServerlessRoutes().then(() => {
+testAppRoutes().then(() => {
   console.log('=== ALL 5 TEST SUITES PASSED CLEANLY ===');
   process.exit(0);
 }).catch((err) => {

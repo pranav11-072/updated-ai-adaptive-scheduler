@@ -103,24 +103,6 @@ app.engine('ejs', (filePath: string, options: any, callback: (err: any, str?: st
 app.set('view engine', 'ejs');
 app.set('views', VIEWS_DIRS);
 
-// Normalize Vercel Serverless Function rewritten paths
-const ROUTE_PAGES = ['dashboard', 'builder', 'gantt', 'predictions', 'recommendations', 'resources', 'progress', 'factors', 'reports'];
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  if (req.url === '/api' || req.url === '/api/') {
-    req.url = '/';
-  } else if (req.url.startsWith('/api/index')) {
-    req.url = req.url.replace(/^\/api\/index/, '') || '/';
-  } else {
-    for (const p of ROUTE_PAGES) {
-      if (req.url === `/api/${p}` || req.url.startsWith(`/api/${p}?`) || req.url.startsWith(`/api/${p}/`)) {
-        req.url = req.url.replace(/^\/api/, '');
-        break;
-      }
-    }
-  }
-  next();
-});
-
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -475,8 +457,10 @@ app.get('/export/:name.csv', (req: Request, res: Response) => {
   const { cycle } = getCycle(req);
 
   let csvContent = '';
-  if (name === 'activities') {
+  if (name === 'activities' || name === 'schedule' || name === 'tasks') {
     csvContent = toCsv(cycle.activities);
+  } else if (name === 'factors') {
+    csvContent = toCsv((cycle.factors || []) as any);
   } else if (name === 'recommendations') {
     csvContent = toCsv(cycle.recommendations as any);
   } else if (name === 'predictions') {
@@ -526,11 +510,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   }
 });
 
-const isMainModule = !process.env.VERCEL && process.argv[1] && (
-  process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js')
-);
-
-if (isMainModule) {
+if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Adaptive Scheduler server listening on http://0.0.0.0:${PORT}`);
   });
