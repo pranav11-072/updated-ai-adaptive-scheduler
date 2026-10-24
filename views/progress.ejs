@@ -6,6 +6,41 @@
 <div class="card kpi"><div class="l">Variance</div><div class="v <%= p.variance_pct < 0 ? 'bad' : 'ok' %>"><%= (p.variance_pct >= 0 ? '+' : '') + p.variance_pct.toFixed(1) %> pts</div><div class="s">performance index <%= p.performance_index %></div></div>
 <div class="card kpi"><div class="l">Working days elapsed</div><div class="v"><%= p.elapsed_working_days %></div></div></div>
 <h2>S-curve</h2><div class="card"><div id="scurve"></div></div>
+
+<% if (p.floor_progress && p.floor_progress.length > 0) { %>
+<h2>Floor-wise Progress Breakdown (<%= c.project && c.project.building_config && c.project.building_config.config_label ? c.project.building_config.config_label : 'Building Levels' %>)</h2>
+<div class="scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>Level / Floor</th>
+        <th class="num">Total Tasks</th>
+        <th class="num">Completed</th>
+        <th class="num">In Progress</th>
+        <th class="num">Critical</th>
+        <th class="num">Planned %</th>
+        <th class="num">Actual %</th>
+        <th class="num">Variance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% p.floor_progress.forEach(function(f) { %>
+      <tr>
+        <td><b class="chip" style="font-size:11px"><%= f.floor %></b></td>
+        <td class="num"><%= f.total_activities %></td>
+        <td class="num"><%= f.completed_activities %></td>
+        <td class="num"><%= f.in_progress_activities %></td>
+        <td class="num <%= f.critical_activities > 0 ? 'bad' : '' %>"><%= f.critical_activities %></td>
+        <td class="num"><%= f.planned_pct.toFixed(1) %> %</td>
+        <td class="num"><%= f.actual_pct.toFixed(1) %> %</td>
+        <td class="num <%= f.variance_pct < 0 ? 'bad' : 'ok' %>"><%= (f.variance_pct >= 0 ? '+' : '') + f.variance_pct.toFixed(1) %> pts</td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
 <h2>Activities in progress or behind plan</h2><div class="scroll"><table><tr><th>ID</th><th>Activity</th><th>Planned %</th><th>Actual %</th><th>Variance</th></tr>
 <% const filteredActs = (p.activities || []).filter(a => a.planned_pct > 0 || a.actual_pct > 0).sort((a,b) => a.variance_pct - b.variance_pct); %>
 <% filteredActs.forEach(function(a) { %>

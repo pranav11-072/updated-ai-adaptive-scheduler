@@ -28,6 +28,15 @@ export interface OverAllocationWindow {
   shortage_resource_days: number;
 }
 
+export interface FloorProgressItem {
+  floor: string;
+  activity_count: number;
+  planned_pct: number;
+  actual_pct: number;
+  variance_pct: number;
+  critical_count: number;
+}
+
 export interface ProgressResult {
   data_date: string;
   elapsed_working_days: number;
@@ -38,6 +47,7 @@ export interface ProgressResult {
   performance_index: number | null;
   s_curve: Array<{ day: number; planned: number; forecast: number }>;
   activities: Array<{ activity_id: string; name: string; planned_pct: number; actual_pct: number; variance_pct: number }>;
+  floor_progress: FloorProgressItem[];
 }
 
 export function computeDailyDemand(
@@ -217,6 +227,43 @@ export function computeProgress(
     });
   }
 
+  // Floor-wise progress calculation
+  const floorMap = new Map<string, { weight: number; plannedNum: number; actualNum: number; count: number; critical: number }>();
+  for (let i = 0; i < activities.length; i++) {
+    const a = activities[i];
+    const s = baseline.schedules[a.activity_id];
+    const sc = current.schedules[a.activity_id];
+    const fl = a.floor || 'General';
+    const w = weights[i];
+    const plannedFrac = fraction(s.es, s.duration, t);
+    const actualFrac = (a.percent_complete || 0) / 100.0;
+    const isCrit = sc ? sc.critical : false;
+
+    if (!floorMap.has(fl)) {
+      floorMap.set(fl, { weight: 0, plannedNum: 0, actualNum: 0, count: 0, critical: 0 });
+    }
+    const entry = floorMap.get(fl)!;
+    entry.weight += w;
+    entry.plannedNum += w * plannedFrac;
+    entry.actualNum += w * actualFrac;
+    entry.count++;
+    if (isCrit) entry.critical++;
+  }
+
+  const floorProgress: FloorProgressItem[] = [];
+  for (const [fl, data] of floorMap.entries()) {
+    const pP = data.weight > 0 ? Math.round((data.plannedNum / data.weight) * 1000) / 10 : 0;
+    const aP = data.weight > 0 ? Math.round((data.actualNum / data.weight) * 1000) / 10 : 0;
+    floorProgress.push({
+      floor: fl,
+      activity_count: data.count,
+      planned_pct: pP,
+      actual_pct: aP,
+      variance_pct: Math.round((aP - pP) * 10) / 10,
+      critical_count: data.critical
+    });
+  }
+
   return {
     data_date: dataDateStr,
     elapsed_working_days: t,
@@ -226,6 +273,7 @@ export function computeProgress(
     variance_pct: variance,
     performance_index: perfIdx,
     s_curve: scurve,
-    activities: actTable
+    activities: actTable,
+    floor_progress: floorProgress
   };
 }

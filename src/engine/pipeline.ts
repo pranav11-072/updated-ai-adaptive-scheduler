@@ -15,6 +15,29 @@ import {
   DEFAULT_DEPENDENCIES_CSV,
   DEFAULT_FACTORS_CSV
 } from './defaultData';
+import {
+  generateGNProjectSchedule,
+  BuildingConfig,
+  validateBuildingConfig,
+  GeneratedSchedule,
+  formatConfigLabel
+} from './floorGenerator';
+
+export function inferFloor(name: string, wbs = ''): string {
+  const n = name.toUpperCase();
+  if (/\b(B2|BASEMENT\s*2)\b/.test(n)) return 'B2';
+  if (/\b(B1|BASEMENT\s*1|BASEMENT)\b/.test(n)) return 'B1';
+  if (/\b(GF|GROUND\s*LEVEL|GROUND\s*FLOOR|GROUND)\b/.test(n)) return 'GF';
+  const floorMatch = n.match(/\b(\d+)\s*F\b/) || n.match(/\bFLOOR\s*(\d+)\b/);
+  if (floorMatch) return `${floorMatch[1]}F`;
+  if (/\bFIRST\b/.test(n)) return '1F';
+  if (/\bSECOND\b/.test(n)) return '2F';
+  if (/\bTHIRD\b/.test(n)) return '3F';
+  if (/\b(FOOTING|EXCAVATION|PLINTH|SUBSTRUCTURE|PCC|BACKFILL|WATERPROOF)\b/.test(n)) return 'Substructure';
+  if (/\b(STAIRCASE|OVERHEAD\s*TANK|PARAPET|TERRACE|ROOF)\b/.test(n)) return 'Terrace';
+  if (/\b(COMPOUND|DRAINAGE|LANDSCAPING|HANDOVER|SNAGGING|EXTERNAL)\b/.test(n)) return 'External';
+  return 'General';
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -239,12 +262,27 @@ export function getScheduleState(): ScheduleState {
     const eng = new CPMEngine(loaded.activities, loaded.dependencies, cal);
     const cpmRes = eng.compute();
 
+    if (!loaded.project.building_config) {
+      loaded.project.building_config = {
+        has_ground_floor: true,
+        floors_above_ground: 3,
+        basement_floors: 0,
+        construction_method: 'rcc_framed',
+        building_type: 'residential',
+        total_levels: 4,
+        config_label: 'G+3'
+      };
+    }
+
     for (const a of loaded.activities) {
       const s = cpmRes.schedules[a.activity_id];
       if (s) {
         a.start_date = cal.dateOf(s.es);
         a.end_date = cal.finishDate(s.ef);
         a.predecessors = formatPredecessorString(a.activity_id, loaded.dependencies);
+      }
+      if (!a.floor) {
+        a.floor = inferFloor(a.name, a.wbs);
       }
     }
 
@@ -257,6 +295,39 @@ export function getScheduleState(): ScheduleState {
     };
   }
   return activeScheduleState;
+}
+
+export function applyBuildingConfiguration(config: Partial<BuildingConfig>): GeneratedSchedule {
+  const current = getScheduleState();
+  const generated = generateGNProjectSchedule(config, current.project);
+
+  const cal = new WorkingCalendar(
+    generated.project.start_date,
+    generated.project.work_week,
+    generated.project.holidays,
+    generated.project.monsoon
+  );
+  const eng = new CPMEngine(generated.activities, generated.dependencies, cal);
+  const cpmRes = eng.compute();
+
+  for (const a of generated.activities) {
+    const s = cpmRes.schedules[a.activity_id];
+    if (s) {
+      a.start_date = cal.dateOf(s.es);
+      a.end_date = cal.finishDate(s.ef);
+      a.predecessors = formatPredecessorString(a.activity_id, generated.dependencies);
+    }
+  }
+
+  activeScheduleState = {
+    project: generated.project,
+    activities: generated.activities,
+    dependencies: generated.dependencies,
+    riskRegister: current.riskRegister,
+    startOffsets: {}
+  };
+
+  return generated;
 }
 
 export function addScheduleTask(input: TaskInput): Activity {
@@ -472,6 +543,41 @@ export function loadScheduleTemplate(name: string): void {
     return;
   }
 
+  if (name === 'g0_building') {
+    applyBuildingConfiguration({ floors_above_ground: 0, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'g2_building') {
+    applyBuildingConfiguration({ floors_above_ground: 2, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'g3_building') {
+    applyBuildingConfiguration({ floors_above_ground: 3, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'g5_building') {
+    applyBuildingConfiguration({ floors_above_ground: 5, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'g10_tower') {
+    applyBuildingConfiguration({ floors_above_ground: 10, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'g20_skyscraper') {
+    applyBuildingConfiguration({ floors_above_ground: 20, has_ground_floor: true, basement_floors: 0 });
+    return;
+  }
+
+  if (name === 'b1_g10_tower') {
+    applyBuildingConfiguration({ floors_above_ground: 10, has_ground_floor: true, basement_floors: 1 });
+    return;
+  }
+
   if (name === 'substructure') {
     const loaded = loadProjectData();
     const subActs = loaded.activities.filter(a => a.activity_id <= 'A140');
@@ -550,6 +656,8 @@ export interface CycleData {
     data_source: string;
     activity_count: number;
     dependency_count: number;
+    building_config?: BuildingConfig;
+    floors?: string[];
   };
   data_date: string;
   mode: 'expected' | 'conservative';
@@ -705,7 +813,8 @@ export function runCycle(
       crash_duration: a.crash_duration,
       crash_cost: a.crash_cost,
       quantity: a.quantity,
-      unit: a.unit
+      unit: a.unit,
+      floor: a.floor || inferFloor(a.name, a.wbs)
     });
   }
 
@@ -764,6 +873,8 @@ export function runCycle(
     recommendation_count: recommendations.length
   };
 
+  const detectedFloors = Array.from(new Set(actRows.map(r => r.floor).filter(Boolean)));
+
   const cycle: CycleData = {
     project: {
       project_id: project.project_id,
@@ -772,7 +883,9 @@ export function runCycle(
       location: project.location,
       data_source: project.data_source,
       activity_count: activities.length,
-      dependency_count: dependencies.length
+      dependency_count: dependencies.length,
+      building_config: project.building_config,
+      floors: detectedFloors
     },
     data_date: dd,
     mode,
@@ -816,10 +929,12 @@ export function runCycle(
     horizon,
     offset_dates: offsetDates,
     predictions_available: true,
+    floors: detectedFloors,
     activities: actRows.map(a => ({
       activity_id: a.activity_id,
       name: a.name,
       type: a.type,
+      floor: a.floor,
       baseline_es: a.baseline_es,
       baseline_ef: a.baseline_ef,
       current_es: a.current_es,

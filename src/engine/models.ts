@@ -18,6 +18,7 @@ export interface Activity {
   start_date?: string;
   end_date?: string;
   predecessors?: string;
+  floor?: string;
 }
 
 export interface Dependency {
@@ -31,6 +32,17 @@ export interface ResourceDef {
   code: string;
   name: string;
   available: number;
+}
+
+export interface BuildingConfig {
+  has_ground_floor: boolean;
+  floors_above_ground: number;
+  basement_floors: number;
+  construction_method: 'rcc_framed' | 'precast' | 'steel_composite';
+  building_type: 'residential' | 'commercial' | 'mixed_use' | 'institutional';
+  building_name?: string;
+  total_levels: number;
+  config_label: string;
 }
 
 export interface ProjectMetadata {
@@ -48,6 +60,7 @@ export interface ProjectMetadata {
     end: string;
   };
   resources: Record<string, { name: string; available: number }>;
+  building_config?: BuildingConfig;
 }
 
 export interface ActivitySchedule {

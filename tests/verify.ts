@@ -64,6 +64,38 @@ console.log('=== STARTING AUTOMATED TEST SUITE ===');
   console.log('✓ Test 4: Schedule builder task operations passed');
 }
 
+// Test 6: Dynamic G+N Building Height Schedule Generator
+{
+  const testConfigs = [
+    { has_ground_floor: true, floors_above_ground: 0, basement_floors: 0, label: 'G+0' },
+    { has_ground_floor: true, floors_above_ground: 2, basement_floors: 0, label: 'G+2' },
+    { has_ground_floor: true, floors_above_ground: 3, basement_floors: 0, label: 'G+3' },
+    { has_ground_floor: true, floors_above_ground: 10, basement_floors: 0, label: 'G+10' },
+    { has_ground_floor: true, floors_above_ground: 20, basement_floors: 0, label: 'G+20' },
+    { has_ground_floor: true, floors_above_ground: 5, basement_floors: 1, label: 'B1+G+5' }
+  ];
+
+  for (const cfg of testConfigs) {
+    const { generateGNProjectSchedule } = await import('../src/engine/floorGenerator');
+    const { project } = getScheduleState();
+    const gen = generateGNProjectSchedule(cfg as any, project);
+    
+    if (gen.activities.length === 0) throw new Error(`${cfg.label} generated 0 activities`);
+    if (gen.dependencies.length === 0) throw new Error(`${cfg.label} generated 0 dependencies`);
+
+    // Verify CPM compute runs without errors / cycles
+    const cal = new WorkingCalendar(gen.project.start_date, gen.project.work_week, gen.project.holidays, gen.project.monsoon);
+    const eng = new CPMEngine(gen.activities, gen.dependencies, cal);
+    const cpm = eng.compute();
+
+    if (cpm.project_duration <= 0) throw new Error(`${cfg.label} produced invalid duration: ${cpm.project_duration}`);
+    if (cpm.critical_path.length === 0) throw new Error(`${cfg.label} has empty critical path`);
+    
+    console.log(`  - ${cfg.label}: ${gen.activities.length} tasks, ${gen.dependencies.length} links, duration ${cpm.project_duration} wd, finishes ${cpm.completion_date}`);
+  }
+  console.log('✓ Test 6: Dynamic G+N Building Schedule Generator passed across all test configurations');
+}
+
 // Test 5: Express Application HTTP Routes
 async function testAppRoutes() {
   const routes = [
@@ -78,6 +110,7 @@ async function testAppRoutes() {
     '/reports',
     '/api/tasks',
     '/api/cycle',
+    '/api/project/config',
     '/api/calendar/calc-days?start_date=2026-05-04&end_date=2026-05-15',
     '/export/schedule.csv',
     '/export/predictions.csv',
@@ -117,7 +150,7 @@ async function testAppRoutes() {
 }
 
 testAppRoutes().then(() => {
-  console.log('=== ALL 5 TEST SUITES PASSED CLEANLY ===');
+  console.log('=== ALL 6 TEST SUITES PASSED CLEANLY ===');
   process.exit(0);
 }).catch((err) => {
   console.error('Test suite failed:', err);

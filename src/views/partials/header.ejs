@@ -11,7 +11,7 @@
 <header class="titleblock">
   <div class="id">
     <h1>AI-Based Self-Adaptive Construction Scheduling</h1>
-    <div class="sub"><% if (c && c.project) { %><%= c.project.name %> · <%= c.project.activity_count %> activities · <%= c.project.dependency_count %> links · start <%= c.project.start_date %><% } %></div>
+    <div class="sub"><% if (c && c.project) { %><%= c.project.name %> · <%= c.project.building_config && c.project.building_config.config_label ? '[' + c.project.building_config.config_label + '] · ' : '' %><%= c.project.activity_count %> activities · <%= c.project.dependency_count %> links · start <%= c.project.start_date %><% } %></div>
   </div>
   <% if (c) { %>
   <form class="params" method="get">

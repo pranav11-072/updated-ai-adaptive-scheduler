@@ -14,8 +14,10 @@ import {
   deleteScheduleTask,
   resetScheduleTasks,
   clearScheduleTasks,
-  loadScheduleTemplate
+  loadScheduleTemplate,
+  applyBuildingConfiguration
 } from './engine/pipeline';
+import { validateBuildingConfig } from './engine/floorGenerator';
 import { WorkingCalendar } from './engine/calendar';
 import { EMBEDDED_VIEWS } from './views/embeddedViews';
 import { EMBEDDED_CSS, EMBEDDED_JS } from './views/embeddedAssets';
@@ -296,7 +298,74 @@ app.post('/builder/template', (req: Request, res: Response) => {
   res.redirect('/builder?msg=' + encodeURIComponent(`Template loaded successfully`));
 });
 
+app.post('/builder/generate-floors', (req: Request, res: Response) => {
+  try {
+    const hasGround = req.body.has_ground_floor === 'true' || req.body.has_ground_floor === 'on' || req.body.has_ground_floor === true || req.body.has_ground_floor === '1';
+    const floorsAbove = parseInt(req.body.floors_above_ground ?? '3', 10);
+    const basements = parseInt(req.body.basement_floors ?? '0', 10);
+    const method = (req.body.construction_method as any) || 'rcc_framed';
+    const bType = (req.body.building_type as any) || 'residential';
+
+    const validation = validateBuildingConfig({
+      has_ground_floor: hasGround,
+      floors_above_ground: isNaN(floorsAbove) ? 3 : floorsAbove,
+      basement_floors: isNaN(basements) ? 0 : basements,
+      construction_method: method,
+      building_type: bType
+    });
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    const generated = applyBuildingConfiguration(validation.config);
+    cache.clear();
+    res.redirect('/builder?msg=' + encodeURIComponent(`Generated ${validation.config.config_label} schedule with ${generated.activities.length} activities and ${generated.dependencies.length} dependencies`));
+  } catch (err: any) {
+    res.redirect('/builder?error=' + encodeURIComponent(err.message || 'Error generating floor schedule'));
+  }
+});
+
 // Schedule Builder REST API Handlers
+app.get('/api/project/config', (_req: Request, res: Response) => {
+  const state = getScheduleState();
+  res.json({
+    building_config: state.project.building_config,
+    project: state.project
+  });
+});
+
+app.post('/api/project/generate-floors', (req: Request, res: Response) => {
+  try {
+    const raw = req.body || {};
+    const hasGround = raw.has_ground_floor !== undefined ? (raw.has_ground_floor === true || raw.has_ground_floor === 'true' || raw.has_ground_floor === 1) : true;
+    const floorsAbove = typeof raw.floors_above_ground === 'number' ? raw.floors_above_ground : parseInt(raw.floors_above_ground ?? '3', 10);
+    const basements = typeof raw.basement_floors === 'number' ? raw.basement_floors : parseInt(raw.basement_floors ?? '0', 10);
+
+    const validation = validateBuildingConfig({
+      has_ground_floor: hasGround,
+      floors_above_ground: isNaN(floorsAbove) ? 3 : floorsAbove,
+      basement_floors: isNaN(basements) ? 0 : basements,
+      construction_method: raw.construction_method || 'rcc_framed',
+      building_type: raw.building_type || 'residential'
+    });
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
+    const generated = applyBuildingConfiguration(validation.config);
+    cache.clear();
+    res.status(200).json({
+      success: true,
+      config: generated.project.building_config,
+      activity_count: generated.activities.length,
+      dependency_count: generated.dependencies.length,
+      activities: generated.activities,
+      dependencies: generated.dependencies
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message || 'Error generating floor configuration' });
+  }
+});
 app.get('/api/tasks', (_req: Request, res: Response) => {
   const state = getScheduleState();
   res.json({

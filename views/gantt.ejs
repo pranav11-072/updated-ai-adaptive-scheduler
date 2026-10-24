@@ -8,6 +8,14 @@
     <option value="atrisk">High / critical risk</option>
     <option value="delayed">Adapted (delay injected)</option>
   </select></label>
+  <label>Floor <select id="floor-select">
+    <option value="all">All floors</option>
+    <% if (c.project && c.project.floors) { %>
+      <% c.project.floors.forEach(function(fl) { %>
+        <option value="<%= fl %>"><%= fl %></option>
+      <% }); %>
+    <% } %>
+  </select></label>
   <label>Search <input id="find" placeholder="name or id"></label>
   <label><input id="base" type="checkbox" checked> Baseline</label>
   <span id="count" class="note"></span>

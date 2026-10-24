@@ -43,22 +43,27 @@ if(D&&page==='resources'){
 if(page==='gantt'){
   const q=location.search;fetch('/api/gantt'+q).then(r=>r.json()).then(G=>{
     const wrap=document.getElementById('gantt'),tip=document.getElementById('tip');
-    const st={ppd:4,filter:'all',base:true,text:''};
+    const st={ppd:4,filter:'all',floor:'all',base:true,text:''};
     const zoomEl = document.getElementById('zoom');
     if (zoomEl) zoomEl.oninput=e=>{st.ppd=+e.target.value;draw()};
     const filterEl = document.getElementById('filter');
     if (filterEl) filterEl.onchange=e=>{st.filter=e.target.value;draw()};
+    const floorEl = document.getElementById('floor-select');
+    if (floorEl) floorEl.onchange=e=>{st.floor=e.target.value;draw()};
     const baseEl = document.getElementById('base');
     if (baseEl) baseEl.onchange=e=>{st.base=e.target.checked;draw()};
     const findEl = document.getElementById('find');
     if (findEl) findEl.oninput=e=>{st.text=e.target.value.toLowerCase();draw()};
-    function ok(a){if(st.text&&!(a.name+a.activity_id).toLowerCase().includes(st.text))return false;
+    function ok(a){
+      if(st.text&&!(a.name+a.activity_id).toLowerCase().includes(st.text))return false;
+      if(st.floor!=='all'&&(a.floor||'')!==st.floor)return false;
       const f=st.filter;return f==='all'||(f==='critical'&&a.critical)||(f==='near'&&a.near_critical)||(f==='atrisk'&&(a.risk_band==='high'||a.risk_band==='critical'))||(f==='delayed'&&a.injected_days>0)}
     function draw(){
       const acts=G.activities.filter(ok).sort((a,b)=>a.current_es-b.current_es||a.activity_id.localeCompare(b.activity_id));
       const ppd=st.ppd,W=(G.horizon+4)*ppd,RH=22,top=36,H=top+acts.length*RH;
       wrap.innerHTML='<div class="gantt-inner"><div class="gantt-labels"></div></div>';
-      const L=wrap.querySelector('.gantt-labels');L.innerHTML='<div class="hd">Activity</div>'+acts.map(a=>`<div title="${a.name}">${a.critical?'<b style="color:#d50000">▌</b>':'&nbsp;'} ${a.activity_id} ${a.name}</div>`).join('');
+      const L=wrap.querySelector('.gantt-labels');
+      L.innerHTML='<div class="hd">Activity</div>'+acts.map(a=>`<div title="${a.name}">${a.critical?'<b style="color:#d50000">▌</b>':'&nbsp;'} ${a.floor?`<span style="font-size:9.5px;color:#475569;background:#e2e8f0;padding:1px 4px;border-radius:2px;margin-right:2px">${a.floor}</span> `:''}${a.activity_id} ${a.name}</div>`).join('');
       const svg=s('svg',{width:W,height:H});wrap.querySelector('.gantt-inner').appendChild(svg);
       let lastM='';G.offset_dates.forEach((d,k)=>{const m=d.slice(0,7);if(m!==lastM){lastM=m;s('line',{x1:k*ppd,x2:k*ppd,y1:0,y2:H,stroke:'#e6dfcc'},svg);const t=s('text',{x:k*ppd+3,y:14,'font-size':10,fill:'#14213d'},svg);t.textContent=new Date(d).toLocaleString('en',{month:'short',year:'2-digit'});}
         if(k%10===0){const t=s('text',{x:k*ppd+3,y:30,'font-size':9,fill:'#7a8194'},svg);t.textContent=k}});
@@ -67,7 +72,7 @@ if(page==='gantt'){
         const col=a.risk_band?RISK[a.risk_band]:'#90a4ae';
         const r=s('rect',{x:a.current_es*ppd,y:y+6,width:Math.max((a.current_ef-a.current_es)*ppd,2),height:10,fill:col,stroke:a.critical?'#d50000':'none','stroke-width':a.critical?2:0},svg);
         r.onmousemove=e=>{tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
-          tip.innerHTML=`<b>${a.activity_id} ${a.name}</b><br>Current: ${a.current_start} → ${a.current_finish} (${a.current_ef-a.current_es} wd)<br>Baseline: ${a.baseline_start} → ${a.baseline_finish}<br>Total float: ${a.total_float} wd ${a.critical?'(CRITICAL)':a.near_critical?'(near-critical)':''}<br>`+
+          tip.innerHTML=`<b>${a.activity_id} ${a.name}</b> ${a.floor?`[${a.floor}]`:''}<br>Current: ${a.current_start} → ${a.current_finish} (${a.current_ef-a.current_es} wd)<br>Baseline: ${a.baseline_start} → ${a.baseline_finish}<br>Total float: ${a.total_float} wd ${a.critical?'(CRITICAL)':a.near_critical?'(near-critical)':''}<br>`+
           (a.p_delay!==null?`P(delay) ${(a.p_delay*100).toFixed(0)}% · ${a.risk_band} · predicted ${a.predicted_delay_days} d<br>Injected: ${a.injected_days} d<br>${a.drivers||''}`:'No risk model')+`<br>Complete: ${a.percent_complete}%`};
         r.onmouseleave=()=>tip.style.display='none'});
       s('line',{x1:G.data_date_offset*ppd,x2:G.data_date_offset*ppd,y1:0,y2:H,stroke:'#1d4e89','stroke-dasharray':'4 3','stroke-width':1.5},svg);

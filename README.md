@@ -113,28 +113,62 @@ Progress, Delay Factors, Reports (generate/download PDF, CSV exports). Data date
 All accept `?data_date=YYYY-MM-DD&mode=...&threshold=...`. Flask contains no scheduling, prediction or adaptation logic - it calls `pipeline.run_cycle()`.
 If models are missing the app still shows the baseline schedule, resources, progress and charts with a warning.
 
-## PDF report
-`adaptive-scheduler report` writes `artifacts/reports/project_report.pdf` (project summary, progress, baseline vs current, critical path, at-risk register,
-SHAP explanations, recommendations, resource utilisation, methodology and limitations). Text is ASCII-only.
+## Dynamic G+N Building Height & Floor Generator
 
-## Testing
+The system supports multi-floor building construction projects with dynamic building height configurations:
+- **Ground floor inclusion**: Toggle Ground Floor (`G`) on/off.
+- **Above-ground floors ($N$)**: Any non-negative integer up to 60 floors (`G+0`, `G+1`, `G+2`, `G+3`, `G+5`, `G+10`, `G+20`, etc.).
+- **Basement levels ($B$)**: Optional basements (`B1`, `B2`, etc.).
+- **Construction methods**: RCC Cast-In-Situ Framed, Precast Modular Concrete, Structural Steel Composite.
+- **Building types**: Residential, Commercial Office, Mixed-Use Tower, Industrial.
+
+### Floor Pipelining & CPM Dependencies
+- Project-level tasks (mobilisation, setting-out, bulk excavation, foundation, external development, handover) remain clean and separate from repeated floor cycles.
+- Per-floor structural cycles: Columns & walls $\to$ Slab & beam shuttering $\to$ Rebar reinforcement $\to$ Concrete pour $\to$ Curing & deshuttering.
+- Vertical flow: Level $k$ slab completion unlocks Level $k+1$ vertical columns (`FS 2`).
+- Realistic floor-to-floor pipelining: Finishes, masonry, conduits, and tiling work proceed upwards concurrently with realistic Start-to-Start lags (`SS 3`), without stalling upper structural framing.
+- All dashboard widgets, Gantt charts, S-curves, and progress tables dynamically filter and reflect the configured floors.
+
+## GitHub Repository & Production Deployment Guide
+
+**GitHub Repository:** `https://github.com/pranav11-072/updated-ai-adaptive-scheduler`  
+**Live Production URL:** `https://updated-ai-adaptive-scheduler.onrender.com/`
+
+### How to Deploy via GitHub to Render (Web Service)
+
+Render automatically connects to your GitHub repository and triggers a deployment on every `git push`.
+
+1. **Commit and Push Your Changes to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Add dynamic G+N floor support and production deployment"
+   git push origin main
+   ```
+
+2. **Connect to Render:**
+   - Log in to [Render.com](https://render.com).
+   - Go to your Dashboard and select your existing Web Service (`updated-ai-adaptive-scheduler`), or click **New + > Web Service**.
+   - Connect your GitHub repository `pranav11-072/updated-ai-adaptive-scheduler`.
+
+3. **Configure Service Settings:**
+   - **Environment:** `Node` (or `Docker`)
+   - **Branch:** `main`
+   - **Build Command:** `npm install && npm run build`
+   - **Start Command:** `npm start` (or `node dist/server.js`)
+   - **Port:** `3000` (or leave default, Render sets `PORT` automatically)
+
+4. **Environment Variables:**
+   - `NODE_ENV`: `production`
+   - `PORT`: `3000`
+
+Render will automatically run the build, start the server, and verify the health check.
+
+### Running with Docker (Alternative)
 ```bash
-pytest            # 113 tests: M1-M8, integration, DB versioning, no-model degradation, CLI, Flask
+docker build -t adaptive-scheduler .
+docker run -p 3000:3000 adaptive-scheduler
 ```
-Tests train a small "fast" model in a temp folder; they do not touch `artifacts/`.
 
-## Provisional assumptions (not from the report - please reconcile)
-RII values and ordering; risk-band cut-offs on P(delay) (0.30 / 0.50 / 0.70); near-critical float <= 5 working days; adaptation cap (50 % of planned duration, 30 days);
-mitigation effectiveness and cost percentages; synthetic generator coefficients; criticality weight `1/(1+TF/5)`; "active factor" = score >= 2; probability calibration;
-case-study holidays, rates, crash costs and scripted delays; use of observed delays in adaptation.
+## PDF report
+`npm run test` verifies the automated CPM engine, calendar calculations, dynamic G+N floor generation, and all HTTP endpoints.
 
-## Limitations
-* Synthetic data only; no real-world validation. Probabilities are meaningful only inside the synthetic data-generating process.
-* `predecessor_delay_ratio` uses observed predecessor delays; for activities whose predecessors have not finished it understates risk.
-* The case-study register is outside the typical synthetic training range, so model output there is extrapolation.
-* Each activity uses one resource type; CPM adaptation ignores resource levelling; no re-baselining workflow.
-* Cost figures are order-of-magnitude INR estimates.
-
-## Future improvements
-Collect as-built records and run the RII questionnaire; retrain and validate on real projects; resource-constrained scheduling; per-activity-type factor scores;
-multi-resource activities; re-baselining with approval; richer progress history for the S-curve.
