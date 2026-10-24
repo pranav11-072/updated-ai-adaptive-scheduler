@@ -22,6 +22,7 @@ import {
   GeneratedSchedule,
   formatConfigLabel
 } from './floorGenerator';
+import { computeAnalytics, AnalyticsResult } from './analyticsEngine';
 
 export function inferFloor(name: string, wbs = ''): string {
   const n = name.toUpperCase();
@@ -715,6 +716,7 @@ export interface CycleData {
   forecast_trend: Array<{ label: string; completion_date: string; data_date?: string }>;
   history: CycleVersion[];
   version: CycleVersion | null;
+  analytics: AnalyticsResult;
 }
 
 export function runCycle(
@@ -745,7 +747,8 @@ export function runCycle(
     baseline,
     calendar,
     riskRegister,
-    dependencies
+    dependencies,
+    threshold
   );
 
   const adaptation = adapt(activities, engine, baseline, predictions, mode, threshold);
@@ -760,6 +763,16 @@ export function runCycle(
 
   const progressData = computeProgress(activities, baseline, current, calendar, dd);
   const recommendations = generateRecommendations(activities, adaptation, explanations);
+  const analytics = computeAnalytics(
+    activities,
+    baseline,
+    current,
+    calendar,
+    dd,
+    adaptation.injected,
+    predictions as any,
+    threshold
+  );
 
   const warnings: string[] = [];
   if (mode === 'expected' && Object.keys(adaptation.injected).length === 0) {
@@ -870,7 +883,18 @@ export function runCycle(
     planned_pct: progressData.planned_pct,
     actual_pct: progressData.actual_pct,
     progress_variance_pct: progressData.variance_pct,
-    recommendation_count: recommendations.length
+    recommendation_count: recommendations.length,
+    spi: analytics.evm.spi,
+    cpi: analytics.evm.cpi,
+    planned_value: analytics.evm.planned_value,
+    earned_value: analytics.evm.earned_value,
+    actual_cost: analytics.evm.actual_cost,
+    cost_variance: analytics.evm.cost_variance,
+    schedule_variance_cost: analytics.evm.schedule_variance,
+    budget_at_completion: analytics.evm.budget_at_completion,
+    estimate_at_completion: analytics.evm.estimate_at_completion,
+    schedule_status: analytics.evm.schedule_status,
+    cost_status: analytics.evm.cost_status
   };
 
   const detectedFloors = Array.from(new Set(actRows.map(r => r.floor).filter(Boolean)));
@@ -917,7 +941,8 @@ export function runCycle(
     rii_status: RII_STATUS,
     forecast_trend: forecastTrend,
     history: historyStore.slice(),
-    version: currentVersion
+    version: currentVersion,
+    analytics
   };
 
   const horizon = Math.max(baseline.project_duration, current.project_duration);

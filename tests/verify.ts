@@ -96,6 +96,42 @@ console.log('=== STARTING AUTOMATED TEST SUITE ===');
   console.log('✓ Test 6: Dynamic G+N Building Schedule Generator passed across all test configurations');
 }
 
+// Test 7: Centralized Analytics & Real EVM Calculation Engine
+{
+  const { cycle } = runCycle();
+  if (!cycle.analytics) throw new Error('cycle.analytics is missing');
+  const { evm, status_distribution, floor_analytics, risk_distribution } = cycle.analytics;
+
+  // Validate EVM numbers
+  if (evm.budget_at_completion <= 0) throw new Error(`Invalid BAC: ${evm.budget_at_completion}`);
+  if (evm.planned_value < 0) throw new Error(`Negative PV: ${evm.planned_value}`);
+  if (evm.earned_value < 0) throw new Error(`Negative EV: ${evm.earned_value}`);
+  if (evm.actual_cost < 0) throw new Error(`Negative AC: ${evm.actual_cost}`);
+  if (isNaN(evm.spi) || evm.spi < 0) throw new Error(`Invalid SPI: ${evm.spi}`);
+  if (isNaN(evm.cpi) || evm.cpi < 0) throw new Error(`Invalid CPI: ${evm.cpi}`);
+
+  // Validate status distribution sums
+  const sumStatus = status_distribution.not_started + status_distribution.in_progress + status_distribution.completed;
+  if (sumStatus !== cycle.activities.length) {
+    throw new Error(`Status distribution sum ${sumStatus} !== total activities ${cycle.activities.length}`);
+  }
+
+  // Validate floor analytics
+  if (!floor_analytics || floor_analytics.length === 0) throw new Error('Floor analytics is empty');
+  for (const f of floor_analytics) {
+    if (f.planned_pct < 0 || f.planned_pct > 100) throw new Error(`Floor ${f.floor} planned_pct out of bounds: ${f.planned_pct}`);
+    if (f.actual_pct < 0 || f.actual_pct > 100) throw new Error(`Floor ${f.floor} actual_pct out of bounds: ${f.actual_pct}`);
+  }
+
+  // Validate risk distribution
+  const sumRisk = risk_distribution.low + risk_distribution.medium + risk_distribution.high + risk_distribution.critical;
+  if (sumRisk !== cycle.activities.length) {
+    throw new Error(`Risk distribution sum ${sumRisk} !== total activities ${cycle.activities.length}`);
+  }
+
+  console.log(`✓ Test 7: Real Analytics & EVM Verification passed (PV: ₹${evm.planned_value.toLocaleString()}, EV: ₹${evm.earned_value.toLocaleString()}, AC: ₹${evm.actual_cost.toLocaleString()}, SPI: ${evm.spi}, CPI: ${evm.cpi})`);
+}
+
 // Test 5: Express Application HTTP Routes
 async function testAppRoutes() {
   const routes = [
@@ -110,6 +146,7 @@ async function testAppRoutes() {
     '/reports',
     '/api/tasks',
     '/api/cycle',
+    '/api/analytics',
     '/api/project/config',
     '/api/calendar/calc-days?start_date=2026-05-04&end_date=2026-05-15',
     '/export/schedule.csv',
@@ -150,7 +187,7 @@ async function testAppRoutes() {
 }
 
 testAppRoutes().then(() => {
-  console.log('=== ALL 6 TEST SUITES PASSED CLEANLY ===');
+  console.log('=== ALL 7 TEST SUITES PASSED CLEANLY ===');
   process.exit(0);
 }).catch((err) => {
   console.error('Test suite failed:', err);

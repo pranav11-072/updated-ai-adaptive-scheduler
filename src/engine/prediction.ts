@@ -16,11 +16,37 @@ export interface ExplanationResult {
   factor_drivers: Array<{ factor: string; factor_id: string; share: number }>;
 }
 
-export function riskBand(p: number): 'low' | 'medium' | 'high' | 'critical' {
-  if (p >= 0.70) return 'critical';
-  if (p >= 0.50) return 'high';
-  if (p >= 0.30) return 'medium';
+/**
+ * Dynamic, proportional risk bands anchored to the configured at-risk threshold (T).
+ * - Critical: P(delay) >= T
+ * - High: 0.75 * T <= P(delay) < T
+ * - Medium: 0.45 * T <= P(delay) < 0.75 * T
+ * - Low: P(delay) < 0.45 * T
+ */
+export function riskBand(p: number, threshold = 0.60): 'low' | 'medium' | 'high' | 'critical' {
+  const t = Math.max(0.01, Math.min(1.0, threshold));
+  if (p >= t) return 'critical';
+  if (p >= 0.75 * t) return 'high';
+  if (p >= 0.45 * t) return 'medium';
   return 'low';
+}
+
+export function getRiskBandBoundaries(threshold = 0.60): {
+  low: { min: number; max: number; label: string };
+  medium: { min: number; max: number; label: string };
+  high: { min: number; max: number; label: string };
+  critical: { min: number; max: number; label: string };
+} {
+  const t = Math.max(0.01, Math.min(1.0, threshold));
+  const med = Math.round(0.45 * t * 100) / 100;
+  const high = Math.round(0.75 * t * 100) / 100;
+  const crit = Math.round(t * 100) / 100;
+  return {
+    low: { min: 0, max: med, label: `< ${med.toFixed(2)}` },
+    medium: { min: med, max: high, label: `${med.toFixed(2)} – ${high.toFixed(2)}` },
+    high: { min: high, max: crit, label: `${high.toFixed(2)} – ${crit.toFixed(2)}` },
+    critical: { min: crit, max: 1.0, label: `≥ ${crit.toFixed(2)}` }
+  };
 }
 
 export function computePredictionsAndExplanations(
@@ -28,7 +54,8 @@ export function computePredictionsAndExplanations(
   cpm: CPMResult,
   calendar: WorkingCalendar,
   register: RiskRegister,
-  dependencies: Array<{ predecessor: string; successor: string }>
+  dependencies: Array<{ predecessor: string; successor: string }>,
+  threshold = 0.60
 ): {
   predictions: Record<string, PredictionResult>;
   explanations: Record<string, ExplanationResult>;
@@ -38,6 +65,7 @@ export function computePredictionsAndExplanations(
     at_risk_threshold: number;
     trained_on: string;
     feature_count: number;
+    risk_bands?: Record<string, string>;
   };
 } {
   const cri = register.compositeRiskIndex();
@@ -87,27 +115,36 @@ export function computePredictionsAndExplanations(
     const isSub = a.activity_type === 'SUBSTRUCTURE' ? 1 : 0;
     const isStruct = a.activity_type === 'STRUCTURE' ? 1 : 0;
     const isMep = a.activity_type === 'MEP' ? 1 : 0;
+    const isFinish = a.activity_type === 'FINISH' ? 1 : 0;
+    const isExt = a.activity_type === 'EXTERNAL' ? 1 : 0;
+    const hasExcOrMix = (a.resource === 'EXC' || a.resource === 'MIXER') ? 1 : 0;
+    const hasHighCrew = (a.crew_size || 0) >= 10 ? 1 : 0;
 
-    // Linear log-odds predictor fitted closely to synthetic distribution
-    let logOdds = -2.1;
-    logOdds += predDelayRatio * 2.8;
-    logOdds += (f06 / 4.0) * 1.5;
-    logOdds += (f03 / 4.0) * 1.3;
+    // Calibrated linear log-odds predictor:
+    // Base intercept around -1.25 gives baseline P ~ 0.22 for undisturbed non-critical activity
+    let logOdds = -1.25;
+    logOdds += predDelayRatio * 2.2;
+    logOdds += critWeight * 0.9;
     logOdds += (f04 / 4.0) * seasonalExposure * 1.8;
-    logOdds += (f02 / 4.0) * 0.9;
-    logOdds += (f01 / 4.0) * 0.8;
-    logOdds += (f09 / 4.0) * 0.7;
-    logOdds += (f11 / 4.0) * 0.6;
-    logOdds += (f12 / 4.0) * 0.5;
-    logOdds += cri * 1.2;
-    logOdds += critWeight * 0.5;
-    if (isSub) logOdds += 0.4;
-    if (isStruct && seasonalExposure > 0.3) logOdds += 0.5;
-    if (isMep && f03 >= 3) logOdds += 0.6;
+    logOdds += ((f06 / 4.0) - 0.5) * 0.8;
+    logOdds += (cri - 0.5) * 0.9;
+
+    // Activity and trade sensitivities
+    if (isSub) logOdds += 0.3 + (f04 / 4.0) * 0.5;
+    if (isStruct) logOdds += (f01 / 4.0) * 0.6 + (f12 / 4.0) * 0.5;
+    if (isMep) logOdds += (f03 / 4.0) * 0.8 + (f08 / 4.0) * 0.5;
+    if (isFinish) logOdds += (f08 / 4.0) * 0.6 + (f01 / 4.0) * 0.4;
+    if (hasExcOrMix) logOdds += (f11 / 4.0) * 0.7;
+    if (hasHighCrew) logOdds += (f02 / 4.0) * 0.6;
+
+    // Past 100% completed activities without delay have minimal forward risk
+    if (a.percent_complete >= 100) {
+      logOdds = a.actual_delay_days > 0 ? 1.5 : -2.8;
+    }
 
     // Probability with sigmoid
     let p_delay = 1.0 / (1.0 + Math.exp(-logOdds));
-    p_delay = Math.min(0.96, Math.max(0.04, p_delay));
+    p_delay = Math.min(0.98, Math.max(0.04, p_delay));
 
     // Regressor for delay days
     let rawDelay = 0.8 + 1.2 * predDelayRatio + 0.9 * (f06 / 4) + 1.1 * seasonalExposure * (f04 / 4) + 0.7 * (f01 / 4);
@@ -115,8 +152,8 @@ export function computePredictionsAndExplanations(
     if (a.duration >= 10) rawDelay += 0.8;
     const predicted_delay_days = Math.max(1.0, Math.round(rawDelay * 10) / 10);
 
-    const band = riskBand(p_delay);
-    const at_risk = p_delay >= 0.38;
+    const band = riskBand(p_delay, threshold);
+    const at_risk = p_delay >= threshold;
 
     // Build factor shares
     const factorWeights: Record<string, number> = {
@@ -135,7 +172,7 @@ export function computePredictionsAndExplanations(
       factorWeights['F02'] += predDelayRatio * 0.10;
     }
 
-    const totalPosWeight = Object.values(factorWeights).reduce((a, b) => a + b, 0) || 1;
+    const totalPosWeight = Object.values(factorWeights).reduce((sum, w) => sum + w, 0) || 1;
     const sortedFactors = Object.entries(factorWeights)
       .map(([fid, w]) => ({
         factor_id: fid,
@@ -170,15 +207,23 @@ export function computePredictionsAndExplanations(
     };
   }
 
+  const boundaries = getRiskBandBoundaries(threshold);
+
   return {
     predictions,
     explanations,
     modelInfo: {
       classifier: 'LogisticRegression',
       regressor: 'XGBoost',
-      at_risk_threshold: 0.38,
+      at_risk_threshold: Math.round(threshold * 100) / 100,
       trained_on: 'SYNTHETIC data',
-      feature_count: 33
+      feature_count: 33,
+      risk_bands: {
+        low: boundaries.low.label,
+        medium: boundaries.medium.label,
+        high: boundaries.high.label,
+        critical: boundaries.critical.label
+      }
     }
   };
 }

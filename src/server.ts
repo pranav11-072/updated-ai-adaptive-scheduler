@@ -481,6 +481,11 @@ app.get('/api/recommendations', (req: Request, res: Response) => {
   res.json(cycle.recommendations);
 });
 
+app.get('/api/analytics', (req: Request, res: Response) => {
+  const { cycle } = getCycle(req);
+  res.json(cycle.analytics);
+});
+
 // Reports endpoints
 app.post('/reports/generate', (req: Request, res: Response) => {
   const queryStr = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';

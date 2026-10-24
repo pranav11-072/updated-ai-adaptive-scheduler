@@ -1,17 +1,98 @@
 <%- include('partials/header') %>
 <% const k = c.kpis; %>
+<% const evm = c.analytics ? c.analytics.evm : null; %>
 <div class="grid g4">
-<div class="card kpi"><div class="l">Baseline completion</div><div class="v"><%= k.baseline_completion %></div><div class="s"><%= k.baseline_duration_wd %> working days</div></div>
-<div class="card kpi"><div class="l">Current forecast</div><div class="v"><%= k.current_completion %></div><div class="s"><%= k.current_duration_wd %> working days</div></div>
-<div class="card kpi"><div class="l">Schedule variance</div><div class="v <%= k.schedule_variance_wd > 0 ? 'bad' : 'ok' %>"><%= (k.schedule_variance_wd > 0 ? '+' : '') + k.schedule_variance_wd %> wd</div><div class="s"><%= (k.calendar_slip_days > 0 ? '+' : '') + k.calendar_slip_days %> calendar days</div></div>
-<div class="card kpi"><div class="l">Critical-path migration</div><div class="v"><%= k.critical_path_migrated ? 'YES' : 'No' %></div><div class="s">new: <%= k.newly_critical.join(', ') || 'none' %> · left: <%= k.left_critical.join(', ') || 'none' %></div></div>
-<div class="card kpi"><div class="l">Progress (planned / actual)</div><div class="v"><%= k.planned_pct.toFixed(1) %> / <%= k.actual_pct.toFixed(1) %> %</div><div class="s">variance <%= (k.progress_variance_pct > 0 ? '+' : '') + k.progress_variance_pct.toFixed(1) %> pts</div></div>
-<div class="card kpi"><div class="l">Critical / near-critical</div><div class="v"><%= k.critical_activities %> / <%= k.near_critical_count %></div><div class="s"><%= k.eroded_float_count %> with float erosion</div></div>
-<div class="card kpi"><div class="l">At-risk activities</div><div class="v"><%= k.at_risk_count !== null ? k.at_risk_count : 'n/a' %></div><div class="s"><%= k.adapted_activities %> adapted · <%= k.recommendation_count %> recommendations</div></div>
-<div class="card kpi"><div class="l">Composite risk index</div><div class="v"><%= c.composite_risk_index.toFixed(2) %></div><div class="s">RII provisional (no survey yet)</div></div></div>
-<div class="grid g2" style="margin-top:14px"><div class="card"><b>Risk distribution (activities by band of P(delay))</b><div id="risk-dist" style="margin-top:8px"></div></div>
-<div class="card"><b>Forecast completion by cycle</b><table style="margin-top:8px"><tr><th>Cycle</th><th>Data date</th><th>Completion</th></tr>
-<% (c.forecast_trend || []).forEach(function(p) { %><tr><td><%= p.label %></td><td class="num"><%= p.data_date || '' %></td><td class="num"><%= p.completion_date %></td></tr><% }); %></table></div></div>
+  <div class="card kpi"><div class="l">Baseline completion</div><div class="v"><%= k.baseline_completion %></div><div class="s"><%= k.baseline_duration_wd %> working days</div></div>
+  <div class="card kpi"><div class="l">Current forecast</div><div class="v"><%= k.current_completion %></div><div class="s"><%= k.current_duration_wd %> working days</div></div>
+  <div class="card kpi"><div class="l">Schedule variance</div><div class="v <%= k.schedule_variance_wd > 0 ? 'bad' : 'ok' %>"><%= (k.schedule_variance_wd > 0 ? '+' : '') + k.schedule_variance_wd %> wd</div><div class="s"><%= (k.calendar_slip_days > 0 ? '+' : '') + k.calendar_slip_days %> calendar days</div></div>
+  <div class="card kpi"><div class="l">Critical-path migration</div><div class="v"><%= k.critical_path_migrated ? 'YES' : 'No' %></div><div class="s">new: <%= k.newly_critical.join(', ') || 'none' %> · left: <%= k.left_critical.join(', ') || 'none' %></div></div>
+  <div class="card kpi"><div class="l">Progress (planned / actual)</div><div class="v"><%= k.planned_pct.toFixed(1) %> / <%= k.actual_pct.toFixed(1) %> %</div><div class="s">variance <%= (k.progress_variance_pct > 0 ? '+' : '') + k.progress_variance_pct.toFixed(1) %> pts</div></div>
+  <div class="card kpi"><div class="l">Critical / near-critical</div><div class="v"><%= k.critical_activities %> / <%= k.near_critical_count %></div><div class="s"><%= k.eroded_float_count %> with float erosion</div></div>
+  <div class="card kpi"><div class="l">At-risk activities</div><div class="v"><%= k.at_risk_count !== null ? k.at_risk_count : 'n/a' %></div><div class="s"><%= k.adapted_activities %> adapted · <%= k.recommendation_count %> recommendations</div></div>
+  <div class="card kpi"><div class="l">Composite risk index</div><div class="v"><%= c.composite_risk_index.toFixed(2) %></div><div class="s">RII provisional (no survey yet)</div></div>
+</div>
+
+<% if (evm) { %>
+<!-- Real Calculated Earned Value Management (EVM) KPI Block -->
+<div class="card" style="margin-top:14px;background:#fcfdfe;border:1px solid #cbd5e1">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <b style="font-size:13px;color:#1e3a8a">📊 Earned Value Management (EVM) Calculations</b>
+      <span class="chip" style="font-size:10px;background:#e2e8f0;color:#334155"><%= evm.schedule_status %> · <%= evm.cost_status %></span>
+    </div>
+    <span class="note" style="font-size:11.5px">Calculated from activity cost &amp; progress weights at data date <%= c.data_date %></span>
+  </div>
+  <div class="grid g4" style="gap:10px">
+    <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
+      <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Planned Value (PV)</div>
+      <div style="font-size:19px;font-weight:600" class="mono">₹<%= evm.planned_value.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)">Budget (BAC): ₹<%= evm.budget_at_completion.toLocaleString() %></div>
+    </div>
+    <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
+      <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Earned Value (EV)</div>
+      <div style="font-size:19px;font-weight:600;color:var(--blue)" class="mono">₹<%= evm.earned_value.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)">SV: <b class="<%= evm.schedule_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.schedule_variance >= 0 ? '+' : '' %>₹<%= evm.schedule_variance.toLocaleString() %></b></div>
+    </div>
+    <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
+      <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Actual Cost (AC)</div>
+      <div style="font-size:19px;font-weight:600" class="mono">₹<%= evm.actual_cost.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)">CV: <b class="<%= evm.cost_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.cost_variance >= 0 ? '+' : '' %>₹<%= evm.cost_variance.toLocaleString() %></b></div>
+    </div>
+    <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
+      <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Performance Indices (SPI / CPI)</div>
+      <div style="font-size:17px;font-weight:600;display:flex;gap:12px;align-items:baseline">
+        <span title="Schedule Performance Index">SPI: <b class="<%= evm.spi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.spi.toFixed(2) %></b></span>
+        <span title="Cost Performance Index">CPI: <b class="<%= evm.cpi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.cpi.toFixed(2) %></b></span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Estimate at finish: ₹<%= evm.estimate_at_completion.toLocaleString() %></div>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- REAL CALCULATED CHARTS ROW 1 -->
+<div class="grid g2" style="margin-top:14px">
+  <div class="card">
+    <b>Activity Status Distribution</b>
+    <div class="note" style="font-size:11px;margin-bottom:6px">Calculated task completion and schedule state (<%= c.project.activity_count %> activities)</div>
+    <div id="status-dist" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <b>Risk Distribution (activities by band of P(delay))</b>
+    <div class="note" style="font-size:11px;margin-bottom:6px">Calculated delay probabilities from risk register</div>
+    <div id="risk-dist" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- REAL CALCULATED CHARTS ROW 2 -->
+<div class="grid g2" style="margin-top:14px">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <b>Floor-wise Construction Progress (<%= c.project.building_config ? c.project.building_config.config_label : 'Building Levels' %>)</b>
+      <a href="/progress<%= query ? '?' + query : '' %>" style="font-size:11.5px;color:var(--blue)">Details →</a>
+    </div>
+    <div class="note" style="font-size:11px;margin-bottom:6px">Calculated Planned vs Actual progress across configured floors</div>
+    <div id="floor-dist" style="margin-top:8px;max-height:260px;overflow-y:auto;padding-right:4px"></div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <b>Forecast Completion Trend by Cycle</b>
+      <span class="note" style="font-size:11px"><%= (c.forecast_trend || []).length %> points</span>
+    </div>
+    <div class="note" style="font-size:11px;margin-bottom:6px">History of schedule recalculations and adaptations</div>
+    <table style="margin-top:8px">
+      <thead>
+        <tr><th>Cycle</th><th>Data Date</th><th class="num">Forecast Finish</th></tr>
+      </thead>
+      <tbody>
+        <% (c.forecast_trend || []).forEach(function(p) { %>
+        <tr><td><b><%= p.label %></b></td><td><%= p.data_date || '–' %></td><td class="num mono"><b><%= p.completion_date %></b></td></tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px">
   <h2 style="margin:0;border:none;padding:0">Highest-risk activities</h2>
   <a href="/builder<%= query ? '?' + query : '' %>" class="btn alt" style="font-size:11.5px;padding:3px 8px">＋ Add Task / Open Schedule Builder →</a>
