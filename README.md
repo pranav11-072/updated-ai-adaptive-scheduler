@@ -1,174 +1,185 @@
 # AI-Based Self-Adaptive Construction Scheduling System
 
-A runnable Python system that builds a CPM schedule for a construction project, predicts which activities are likely to be delayed,
-**re-plans the schedule automatically** from those predictions, explains the predictions with SHAP, and recommends mitigation actions.
-Built for a civil-engineering planner: everything is available from a CLI, a local web app, JSON APIs and a PDF report.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5.2+-lightgrey.svg)](https://expressjs.com/)
+[![Tests](https://img.shields.io/badge/Tests-8%20Passing-brightgreen.svg)](./tests/verify.ts)
 
-> **Read this first - honesty notes**
-> * `Implementation_Report.pdf` was **not available** when this system was built. The architecture (M1-M8), formulas and constraints follow the
->   written brief. Every parameter that the brief did not fix is marked **PROVISIONAL** (see *Provisional assumptions*) and must be reconciled with the report.
-> * The case study and **all training data are SYNTHETIC**. Scores measured on synthetic projects (ROC-AUC 0.81 on the synthetic test projects) are
->   **not real-world validation**. No as-built records were used.
-> * RII values are **provisional** - the questionnaire survey has not been conducted.
+A production-grade, full-stack civil engineering construction scheduling and analytics platform. Built with **real mathematical calculations**, the system computes Critical Path Method (CPM) schedules, monitors delay factors, predicts delay probabilities $P(\text{delay})$, dynamically recalculates risk bands and adapted forecast schedules in real time, and renders **every chart, graph, and timeline directly from live calculated project data**.
 
-## Problem and objective
-Construction schedules slip because of weather, material supply, labour, approvals, finance and similar factors. A static CPM baseline cannot react.
-This system closes the loop (MAPE-K): monitor delay-factor scores, predict P(delay) and delay days per activity, adapt activity durations, recompute CPM,
-and give ranked, explainable recommendations - while the **baseline is never overwritten**.
+* **Live Application:** [https://updated-ai-adaptive-scheduler.onrender.com/](https://updated-ai-adaptive-scheduler.onrender.com/)
+* **GitHub Repository:** [https://github.com/pranav11-072/updated-ai-adaptive-scheduler](https://github.com/pranav11-072/updated-ai-adaptive-scheduler)
 
-## Architecture
+---
+
+## Key Features & Capabilities
+
+### 1. Real Critical Path Method (CPM) Engine
+* **Rigorous Network Analysis:** Performs complete forward and backward passes across all activities and dependency links.
+* **Complex Dependency Support:** Full support for `FS` (Finish-to-Start), `SS` (Start-to-Start), `FF` (Finish-to-Finish), and `SF` (Start-to-Finish) relationships with positive or negative lead/lag offsets.
+* **Schedule Slack & Float:** Exact working-day calculation of Early Start (ES), Early Finish (EF), Late Start (LS), Late Finish (LF), Total Float (TF), and Free Float (FF).
+* **Baseline Integrity:** The planned baseline is preserved and never overwritten. Adaptation recalculations generate separate forecast schedules, measuring schedule variance (working days and calendar days), critical path migration, and float erosion.
+
+### 2. Live Calculated Graphs & Visualizations
+Every visualization in the system is generated dynamically from live calculated project data with zero mock or hardcoded values:
+* **Progress S-Curve:** Cumulative project progress percentage plotted across working days. Compares Planned Baseline vs. Adapted Forecast, with a dynamic vertical Data Date line and Actual Progress marker.
+* **Interactive Gantt Chart:** High-performance, client-and-server synchronized vector Gantt chart with interactive zoom slider, critical-path highlights, floor filters, task search, baseline comparison bars, and detailed tooltips.
+* **Activity Status Distribution:** Real-time breakdown of tasks into Completed, In Progress, Not Started, Critical Path, Near-Critical, and Delayed.
+* **Risk Distribution Graph:** Real-time activity counts categorized across Low, Medium, High, and Critical risk bands based on delay probability $P(\text{delay})$ and the user-selected threshold.
+* **Floor-wise Progress Breakdown:** Dual horizontal progress bars (Planned % vs. Actual %) per building floor level.
+* **Forecast Completion Trend:** Visual progression tracking how completion dates adapt across scheduling revision cycles.
+* **Daily Resource Demand Histograms:** Daily demand curves for manpower and equipment (Masons, Carpenters, Steel Benders, Concrete Mixers, Labor) against declared capacity limits, highlighting over-allocation windows in red.
+* **Delay Drivers / Feature Importance:** Visual ranking of site risk factors by provisional Relative Importance Index (RII) and severity score.
+* **Dynamic Vector SVG Figure Endpoints:** Direct vector endpoints (`/figures/:name.svg`) for all charts with live query parameter updates.
+
+### 3. Dynamic Real-Time Risk Threshold Recalculation
+* **Configurable Decision Threshold:** Users can adjust the risk threshold slider or input (e.g., `0.30`, `0.50`, `0.70`, `0.90`) and click **Apply**.
+* **Zero-Reload Dynamic Updates:** Immediately triggers `POST /api/recalculate`, re-evaluating each activity's risk classification, updating at-risk activity counts, adapting durations, and refreshing all dashboard KPIs and graphs on the fly.
+* **Consistent Risk Bands:**
+  $$\text{Critical: } P(\text{delay}) \ge \text{threshold}$$
+  $$\text{High: } 0.75 \times \text{threshold} \le P(\text{delay}) < \text{threshold}$$
+  $$\text{Medium: } 0.45 \times \text{threshold} \le P(\text{delay}) < 0.75 \times \text{threshold}$$
+  $$\text{Low: } P(\text{delay}) < 0.45 \times \text{threshold}$$
+
+### 4. Real Earned Value Management (EVM) Calculation Suite
+Calculated at each project Data Date using individual task costs and progress percentages:
+* **Planned Value (PV):** $\sum (\text{Task Budget} \times \text{Planned Fraction})$
+* **Earned Value (EV):** $\sum (\text{Task Budget} \times \text{Percent Complete})$
+* **Actual Cost (AC):** Cumulative expenditure to date
+* **Schedule Variance (SV):** $EV - PV$
+* **Cost Variance (CV):** $EV - AC$
+* **Schedule Performance Index (SPI):** $EV / PV$
+* **Cost Performance Index (CPI):** $EV / AC$
+* **Budget at Completion (BAC)** and **Estimate at Completion (EAC):** $BAC / CPI$
+
+### 5. Dynamic G+N Building Height & Floor Generator
+Generates realistic multi-story construction schedules on demand:
+* **Any Height:** Configure Ground Floor toggle, above-ground floors ($N = 0$ to $60$), and basement levels ($B = 0$ to $5$).
+* **Construction Methods:** RCC Cast-In-Situ Framed, Precast Modular Concrete, and Structural Steel Composite.
+* **Vertical Flow & Pipelining:** Enforces structural cycle dependencies (Columns $\to$ Slab & Beam $\to$ Concrete Pour $\to$ Curing) while allowing architectural, MEP, and finishes to pipeline upward concurrently with realistic Start-to-Start lags (`SS 3`).
+
+### 6. Interactive Construction Schedule Builder
+* **Custom Value Slot:** Fast batch text slot to paste task definitions in the format:  
+  `Task Name, Start Date, End Date, [Type], [Resource], [Crew], [Cost], [Predecessors]`
+* **Task Input & Editing Form:** Add or edit tasks with working calendar duration previews and dependency linkers.
+* **Civil Construction Example Cases:** Built-in one-click presets for deep shoring, monolithic slab pours, monsoon basement waterproofing, vertical plumbing risers, HV substations, and vitrified tiling.
+
+---
+
+## System Architecture
+
 ```
-M1 Project/WBS  ->  M2 CPM  ->  M3 Delay factors  ->  M4 AI prediction + SHAP  ->  M5 Self-adaptive rescheduling
-   ->  M6 Decision support  ->  M7 Resources + Progress  ->  M8 Charts + Web + PDF  ->  SQLite version store
+src/
+├── server.ts                  # Express 5 server, REST endpoints, SVG chart delivery, and EJS rendering
+├── engine/
+│   ├── cpm.ts                 # CPM engine (forward/backward pass, float calculation, critical path)
+│   ├── calendar.ts            # Working calendar (6-day work week, holidays, monsoon exposure)
+│   ├── analyticsEngine.ts     # EVM metrics, status distribution, floor-wise analytics
+│   ├── chartGenerator.ts      # Live SVG generation for S-Curves, Gantt, Risk, and Resource Histograms
+│   ├── floorGenerator.ts      # Multi-story building schedule generator (G+N levels)
+│   ├── pipeline.ts            # Centralized cycle orchestration (runCycle, schedule mutations)
+│   ├── prediction.ts          # Delay probability calibration, risk banding, and drivers
+│   ├── adaptation.ts          # Self-adaptive rescheduling from predictions
+│   ├── resources.ts           # Resource demand curves, over-allocation windows, S-curve points
+│   ├── recommend.ts           # Mitigation & crash recommendations
+│   ├── delayFactors.ts        # Risk register and Relative Importance Index (RII)
+│   └── models.ts              # Data contracts and TypeScript interfaces
+└── views/                     # EJS templates with embedded SVG graph components
 ```
-| Module | File(s) | Responsibility |
-|---|---|---|
-| M1 | `models.py` `wbs.py` `calendars.py` | Frozen models; strict validation (no silent repair); working calendar (6-day week, holidays, monsoon) |
-| M2 | `cpm.py` | NetworkX activity-on-node CPM; FS/SS/FF/SF with +/- lags; ES/EF/LS/LF/TF/FF; `compute(duration_overrides)` never mutates the Project |
-| M3 | `delay_factors.py` | 15 factors, 0-4 scores, RII (provisional), live register, composite risk index, dominant factors |
-| M4 | `dataset.py` `features.py` `ml/train.py` `ml/predict.py` `ml/explain.py` | Synthetic dataset, ONE shared feature builder, training, inference, SHAP |
-| M5 | `adaptation.py` | Expected-value / conservative adaptation, critical-path migration, float erosion |
-| M6 | `recommend.py` | Positive-SHAP attribution, ranked mitigation + crash recommendations |
-| M7 | `resources.py` | Resource demand/utilisation/over-allocation windows; planned vs actual progress; S-curve |
-| M8 | `visuals.py` `reporting.py` `web/` | Charts, ReportLab PDF, Flask app |
-| Store | `store.py` | SQLite `project`, `schedule_version`, `activity_schedule`, `prediction`; baseline protected by triggers |
-| Pipeline | `pipeline.py` | **`run_cycle()`** - the single cycle used by both CLI and Flask |
 
-Key formulas (documented in the module docstrings):
-* Composite risk index = sum(RII_f x score_f/4) / sum(RII_f)
-* Expected value: `Dur_adaptive = Dur_planned + D x P(delay)`; conservative: `Dur_planned + D`; only if `P >= 0.60`; rounded **up**; capped
-* `share(f) = positive_SHAP(f) / sum positive factor SHAP`; `attributable_days = injected_days x share`; `recovery = attributable x effectiveness`
-* `cost_slope = (crash_cost - normal_cost) / (normal_duration - crash_duration)`; crash limits respected
+---
 
-## Technology stack
-Python 3.11+, pandas, NumPy, NetworkX, scikit-learn, XGBoost, imbalanced-learn, SHAP, SciPy, joblib, Matplotlib (headless), Seaborn, ReportLab, Flask, SQLite, pytest, HTML/CSS/JavaScript. CPU only.
+## Quick Start & Installation
 
-## Installation (project-local virtual environment)
+### Prerequisites
+* **Node.js** (v18.0.0 or higher)
+* **npm** (v9.0.0 or higher)
+
+### Installation
 ```bash
-cd adaptive-scheduler
-python3 -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt       # optional: install test dependencies
-pip install -e .                     # installs the `adaptive-scheduler` command
+# 1. Clone the repository
+git clone https://github.com/pranav11-072/updated-ai-adaptive-scheduler.git
+cd updated-ai-adaptive-scheduler
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the development server
+npm run dev
 ```
 
-## Quick start (exact commands)
-```bash
-adaptive-scheduler make-case-study            # write the synthetic G+3 input files (67 activities, 94 links)
-adaptive-scheduler validate                   # strict validation of data/project/*
-adaptive-scheduler schedule                   # baseline CPM
-adaptive-scheduler make-dataset               # SYNTHETIC dataset (45 projects) -> data/dataset/
-adaptive-scheduler train                      # full grid search, ~1-2 min on a laptop CPU
-adaptive-scheduler explain --activity A240    # SHAP global + local
-adaptive-scheduler predict --at-risk-only
-adaptive-scheduler adapt --data-date 2026-09-07
-adaptive-scheduler recommend --data-date 2026-09-07
-adaptive-scheduler resources
-adaptive-scheduler progress --data-date 2026-09-07
-adaptive-scheduler report --data-date 2026-09-07      # charts + artifacts/reports/project_report.pdf
-adaptive-scheduler history
-adaptive-scheduler serve                      # http://127.0.0.1:5000
-```
-Common options: `--help --json --data-date YYYY-MM-DD --threshold 0.60 --mode expected|conservative --no-explain --no-store --project-dir --models-dir --db`.
-Try `adaptive-scheduler adapt --threshold 0.45` to see more activities adapted, or `--mode conservative`.
+The application will be available at: **http://localhost:3000**
 
-### Dataset and model training
-`make-dataset` simulates 45 synthetic projects by perturbing the case-study network (durations, quantities, crews, start month) with monsoon/weather,
-material, financial, approval/permit, contractor, rework and subcontractor effects, predecessor-delay propagation, activity criticality and a hidden
-project-competence effect. `train` uses a **project-wise split (31 train / 7 validation / 7 test)**, correlation screening at |r| > 0.85
-(training rows only), SMOTE inside training folds only, grid search with **5-fold CV grouped by project** (ROC-AUC for classifiers, MAE for regressors),
-threshold tuning on validation (max F2 s.t. precision >= 0.60), regression on delayed activities only, and Platt calibration on validation projects.
-Outputs: `artifacts/models/{classifier.joblib, regressor.joblib, feature_spec.json}`, `artifacts/reports/{model_metrics.json, shap_global_ranking.json}`.
-Training and inference both call `features.build_feature_frame()` and the persisted `feature_spec.json`.
+### Available Scripts
 
-Result of the shipped run (SYNTHETIC test projects): classifier LogisticRegression, ROC-AUC 0.81, precision 0.64, recall 0.74 at threshold 0.38;
-regressor XGBoost, MAE 0.91 days. Features dropped by screening: `active_factor_count` (r=0.96 with composite index), `type_mep` (r=0.87).
-
-### CPM, adaptation, recommendations
-* CPM works on integer working-day offsets; dates come from the calendar (`date_of`, `offset_of`, `span`, `elapsed_days`, `monsoon_exposure`).
-* Adaptation recomputes CPM from the **original** durations with overrides, so baseline and project objects are untouched. It reports schedule variance (working and
-  calendar days), newly critical / left-critical activities, critical-path migration, near-critical activities and float erosion. Activities that already carry an
-  *observed* delay (`actual_delay_days`) are adapted with the observed value (flagged `observed`); finished activities get no prediction-based delay.
-* Recommendations cover critical and near-critical activities only. Mitigation estimates are **engineering-judgement**; crash estimates are **crash-limit based**
-  and labelled as such in the `basis` column.
-
-### Resources and progress
-Demand is in resource-days against availability declared in `project.json`. Consecutive over-allocated days are merged into windows. Progress is duration-weighted by
-default (`--weighting quantity` available; note quantities have mixed units). `percent_complete` in `activities.csv` is the actual progress at the data date.
-
-## Web application and API
-`adaptive-scheduler serve` -> **http://127.0.0.1:5000** (local, single user, no authentication).
-Pages: Dashboard, Gantt (zoom, filter, search, hover, baseline toggle; drawn in the browser from working-day offsets), Predictions, Recommendations, Resources,
-Progress, Delay Factors, Reports (generate/download PDF, CSV exports). Data date, mode and threshold are editable at the top; "Run & store cycle" saves a version.
-
-| Endpoint | Description |
+| Command | Description |
 |---|---|
-| `GET /api/cycle` | full cycle result |
-| `GET /api/gantt` | activities with baseline/current working-day offsets |
-| `GET /api/activities` | per-activity schedule, risk, drivers |
-| `GET /api/recommendations` | ranked recommendations |
-| `POST /reports/generate`, `GET /reports/download`, `GET /export/<name>.csv` | PDF and CSV |
+| `npm run dev` | Runs the development server with live TypeScript compilation (`tsx`) on port 3000 |
+| `npm test` | Executes the automated 8-part test suite validating CPM, EVM, G+N, and thresholds |
+| `npm run build` | Compiles TypeScript code using `tsc` |
+| `npm start` | Starts the production server using `tsx src/server.ts` |
 
-All accept `?data_date=YYYY-MM-DD&mode=...&threshold=...`. Flask contains no scheduling, prediction or adaptation logic - it calls `pipeline.run_cycle()`.
-If models are missing the app still shows the baseline schedule, resources, progress and charts with a warning.
+---
 
-## Dynamic G+N Building Height & Floor Generator
+## REST API Reference
 
-The system supports multi-floor building construction projects with dynamic building height configurations:
-- **Ground floor inclusion**: Toggle Ground Floor (`G`) on/off.
-- **Above-ground floors ($N$)**: Any non-negative integer up to 60 floors (`G+0`, `G+1`, `G+2`, `G+3`, `G+5`, `G+10`, `G+20`, etc.).
-- **Basement levels ($B$)**: Optional basements (`B1`, `B2`, etc.).
-- **Construction methods**: RCC Cast-In-Situ Framed, Precast Modular Concrete, Structural Steel Composite.
-- **Building types**: Residential, Commercial Office, Mixed-Use Tower, Industrial.
+All endpoints accept query parameters: `?data_date=YYYY-MM-DD&threshold=0.60&mode=expected|conservative`.
 
-### Floor Pipelining & CPM Dependencies
-- Project-level tasks (mobilisation, setting-out, bulk excavation, foundation, external development, handover) remain clean and separate from repeated floor cycles.
-- Per-floor structural cycles: Columns & walls $\to$ Slab & beam shuttering $\to$ Rebar reinforcement $\to$ Concrete pour $\to$ Curing & deshuttering.
-- Vertical flow: Level $k$ slab completion unlocks Level $k+1$ vertical columns (`FS 2`).
-- Realistic floor-to-floor pipelining: Finishes, masonry, conduits, and tiling work proceed upwards concurrently with realistic Start-to-Start lags (`SS 3`), without stalling upper structural framing.
-- All dashboard widgets, Gantt charts, S-curves, and progress tables dynamically filter and reflect the configured floors.
+### Calculation & Data Endpoints
 
-## GitHub Repository & Production Deployment Guide
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/recalculate` | Recomputes CPM, risk classifications, EVM, and adaptation for a given `{ threshold, data_date, mode }` without page reload |
+| `GET` | `/api/cycle` | Returns the complete scheduling cycle object including KPIs, activities, EVM, and analytics |
+| `GET` | `/api/gantt` | Returns working-day offsets, critical path flags, and horizon dates for the Gantt chart |
+| `GET` | `/api/activities` | Returns all activities with calculated $P(\text{delay})$, risk bands, and float |
+| `GET` | `/api/analytics` | Returns calculated EVM metrics, status distributions, and floor analytics |
+| `GET` | `/api/recommendations` | Returns prioritized schedule recovery and crashing actions |
+| `GET` | `/api/tasks` | Returns raw activity and dependency structures |
+| `POST` | `/api/tasks` | Adds a new activity to the schedule structure |
+| `PUT` | `/api/tasks/:id` | Updates an existing activity |
+| `DELETE` | `/api/tasks/:id` | Deletes an activity from the schedule |
+| `POST` | `/api/project/generate-floors` | Generates a new G+N multi-story building schedule |
 
-**GitHub Repository:** `https://github.com/pranav11-072/updated-ai-adaptive-scheduler`  
-**Live Production URL:** `https://updated-ai-adaptive-scheduler.onrender.com/`
+### Dynamic Vector Chart Endpoints
 
-### How to Deploy via GitHub to Render (Web Service)
+| Endpoint | Visual Output |
+|---|---|
+| `GET /figures/s_curve.svg` | Cumulative Planned Baseline vs. Adapted Forecast S-Curve |
+| `GET /figures/gantt_chart.svg` | Master Schedule and Critical Path Gantt Timeline |
+| `GET /figures/risk_distribution.svg` | Activity Risk Distribution across calibrated risk bands |
+| `GET /figures/forecast_trend.svg` | Project completion forecast progression by cycle |
+| `GET /figures/resource_histogram.svg` | Daily manpower/equipment demand histograms vs. capacity |
+| `GET /figures/shap_global_importance.svg` | Construction delay risk driver ranking by impact score |
 
-Render automatically connects to your GitHub repository and triggers a deployment on every `git push`.
+### Export Endpoints
 
-1. **Commit and Push Your Changes to GitHub:**
-   ```bash
-   git add .
-   git commit -m "Add dynamic G+N floor support and production deployment"
-   git push origin main
-   ```
+* `GET /export/activities.csv` — Full activity schedule CSV
+* `GET /export/recommendations.csv` — Schedule mitigation recommendations CSV
+* `GET /export/predictions.csv` — Risk predictions and delay probability CSV
+* `GET /export/resources.csv` — Resource utilization summary CSV
 
-2. **Connect to Render:**
-   - Log in to [Render.com](https://render.com).
-   - Go to your Dashboard and select your existing Web Service (`updated-ai-adaptive-scheduler`), or click **New + > Web Service**.
-   - Connect your GitHub repository `pranav11-072/updated-ai-adaptive-scheduler`.
+---
 
-3. **Configure Service Settings:**
-   - **Environment:** `Node` (or `Docker`)
-   - **Branch:** `main`
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start` (or `node dist/server.js`)
-   - **Port:** `3000` (or leave default, Render sets `PORT` automatically)
+## Automated Verification Suite
 
-4. **Environment Variables:**
-   - `NODE_ENV`: `production`
-   - `PORT`: `3000`
-
-Render will automatically run the build, start the server, and verify the health check.
-
-### Running with Docker (Alternative)
+Run the full automated test suite anytime using:
 ```bash
-docker build -t adaptive-scheduler .
-docker run -p 3000:3000 adaptive-scheduler
+npm test
 ```
 
-## PDF report
-`npm run test` verifies the automated CPM engine, calendar calculations, dynamic G+N floor generation, and all HTTP endpoints.
+The test runner (`tests/verify.ts`) validates:
+1. **Working Calendar:** Date offsets, 6-day work weeks, and monsoon exposure calculations.
+2. **CPM Engine:** Forward/backward pass, total float, and critical path accuracy.
+3. **Pipeline Cycle:** Full execution of synthetic case study data without regression.
+4. **Schedule Builder:** Dynamic addition, deletion, and reset of tasks.
+5. **Dynamic G+N Building Generator:** Schedule generation across `G+0`, `G+2`, `G+3`, `G+10`, `G+20`, and `B1+G+5` configurations.
+6. **EVM Metrics:** Verified PV, EV, AC, SPI, and CPI calculations.
+7. **HTTP Endpoints:** Health checks across all 21 REST and view routes.
+8. **Threshold Mathematical Reclassification:** Verifies activity migration across risk bands for thresholds `0.30`, `0.50`, `0.70`, and `0.90`.
 
+---
+
+## License
+
+This project is licensed under the MIT License.

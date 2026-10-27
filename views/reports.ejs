@@ -9,19 +9,46 @@
   <a class="btn alt" href="/export/resources.csv?<%= query %>">Resources CSV</a>
 </div>
 <% if (generated) { %><div class="banner">Report generated: <%= generated %></div><% } %>
+
 <h2>JSON API</h2>
 <ul>
-  <li><a href="/api/cycle?<%= query %>">GET /api/cycle</a> – full cycle result</li>
-  <li><a href="/api/gantt?<%= query %>">GET /api/gantt</a> – working-day offsets</li>
-  <li><a href="/api/activities?<%= query %>">GET /api/activities</a></li>
-  <li><a href="/api/recommendations?<%= query %>">GET /api/recommendations</a></li>
+  <li><a href="/api/cycle?<%= query %>">GET /api/cycle</a> – full cycle result (CPM, EVM, risk classifications)</li>
+  <li><a href="/api/gantt?<%= query %>">GET /api/gantt</a> – working-day offsets, critical path, activity float</li>
+  <li><a href="/api/activities?<%= query %>">GET /api/activities</a> – task list with P(delay) and adapted durations</li>
+  <li><a href="/api/recommendations?<%= query %>">GET /api/recommendations</a> – prioritized mitigation actions</li>
+  <li><a href="/api/analytics?<%= query %>">GET /api/analytics</a> – EVM metrics, floor analytics, and risk bands</li>
 </ul>
-<h2>Charts (generated with the PDF)</h2>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px;flex-wrap:wrap;gap:8px">
+  <h2 style="margin:0;border:none;padding:0">Project Analytics &amp; Calculated Charts</h2>
+  <span class="note">Generated dynamically from live scheduling engine (data date: <%= c.data_date %>, threshold: <%= c.threshold.toFixed(2) %>)</span>
+</div>
+
+<% 
+const FIG_META = {
+  gantt_chart: { title: 'Project Master Schedule Gantt', desc: 'Baseline timeline (gray) vs current forecast with critical path outlined in red.' },
+  s_curve: { title: 'Cumulative Progress S-Curve', desc: 'Planned baseline curve vs adapted forecast with actual progress marker.' },
+  risk_distribution: { title: 'Activity Risk Distribution', desc: 'Activity counts partitioned across Low, Medium, High, and Critical risk bands.' },
+  forecast_trend: { title: 'Forecast Completion Trend by Cycle', desc: 'Project completion date progression across scheduling revisions.' },
+  resource_histogram: { title: 'Daily Resource Demand Histograms', desc: 'Manpower / equipment demand profiles vs capacity limits (red = over-allocated).' },
+  shap_global_importance: { title: 'Delay Factor Severity & Impact', desc: 'Ranking of site risk drivers by provisional RII and severity impact scores.' }
+};
+%>
+
 <div class="grid g2">
-  <% ['gantt_chart','s_curve','risk_distribution','forecast_trend','resource_histogram','shap_global_importance'].forEach(function(n) { %>
-  <div class="card">
-    <b><%= n %></b><br>
-    <img class="fig" src="/figures/<%= n %>.png" alt="<%= n %>" onerror="this.replaceWith('not generated yet')">
+  <% ['s_curve', 'gantt_chart', 'risk_distribution', 'forecast_trend', 'resource_histogram', 'shap_global_importance'].forEach(function(n) { %>
+  <% const meta = FIG_META[n] || { title: n, desc: '' }; %>
+  <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <b><%= meta.title %></b>
+        <a class="btn alt" style="font-size:11px;padding:2px 8px" href="/figures/<%= n %>.svg<%= query ? '?' + query : '' %>" target="_blank" download="<%= n %>.svg">Download SVG</a>
+      </div>
+      <div class="note" style="font-size:11.5px;margin-bottom:8px"><%= meta.desc %></div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:2px;overflow:hidden;background:#fff">
+      <img class="fig" src="/figures/<%= n %>.svg<%= query ? '?' + query : '' %>" alt="<%= meta.title %>" style="width:100%;height:auto;display:block;border:none">
+    </div>
   </div>
   <% }); %>
 </div>

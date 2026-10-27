@@ -19,6 +19,7 @@ import {
 } from './engine/pipeline';
 import { validateBuildingConfig } from './engine/floorGenerator';
 import { WorkingCalendar } from './engine/calendar';
+import { generateFigureSvg } from './engine/chartGenerator';
 import { EMBEDDED_VIEWS } from './views/embeddedViews';
 import { EMBEDDED_CSS, EMBEDDED_JS } from './views/embeddedAssets';
 
@@ -108,15 +109,23 @@ app.set('views', VIEWS_DIRS);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Embedded static asset routes
+// Embedded static asset routes with disk-first serving
 app.get(['/static/style.css', '/style.css'], (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  const diskPath = path.join(PUBLIC_DIR, 'style.css');
+  if (fs.existsSync(diskPath)) {
+    return res.sendFile(diskPath);
+  }
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.send(EMBEDDED_CSS);
 });
 
 app.get(['/static/app.js', '/app.js'], (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  const diskPath = path.join(PUBLIC_DIR, 'app.js');
+  if (fs.existsSync(diskPath)) {
+    return res.sendFile(diskPath);
+  }
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.send(EMBEDDED_JS);
 });
@@ -156,30 +165,35 @@ const cache = new Map<string, CycleCacheEntry>();
 
 function getCycleParams(req: Request): { dataDate?: string; mode: 'expected' | 'conservative'; threshold: number } {
   let threshold = 0.60;
-  if (req.query.threshold) {
-    const parsed = parseFloat(req.query.threshold as string);
+  const rawThresh = req.query.threshold !== undefined
+    ? req.query.threshold
+    : (req.body && req.body.threshold !== undefined ? req.body.threshold : undefined);
+
+  if (rawThresh !== undefined && rawThresh !== null && String(rawThresh).trim() !== '') {
+    const parsed = parseFloat(String(rawThresh));
     if (!isNaN(parsed)) {
       threshold = Math.max(0, Math.min(1, parsed));
     }
   }
 
   let mode: 'expected' | 'conservative' = 'expected';
-  if (req.query.mode === 'conservative') {
+  const rawMode = req.query.mode || (req.body && req.body.mode);
+  if (rawMode === 'conservative') {
     mode = 'conservative';
   }
 
-  const dataDate = typeof req.query.data_date === 'string' && req.query.data_date.trim().length > 0
+  const rawDate = typeof req.query.data_date === 'string' && req.query.data_date.trim().length > 0
     ? req.query.data_date.trim()
-    : undefined;
+    : (req.body && typeof req.body.data_date === 'string' && req.body.data_date.trim().length > 0 ? req.body.data_date.trim() : undefined);
 
-  return { dataDate, mode, threshold };
+  return { dataDate: rawDate, mode, threshold };
 }
 
-function getCycle(req: Request, forceStore = false): CycleCacheEntry {
+function getCycle(req: Request, forceStore = false, bypassCache = false): CycleCacheEntry {
   const { dataDate, mode, threshold } = getCycleParams(req);
   const cacheKey = `${dataDate || 'default'}_${mode}_${threshold}_${forceStore}`;
 
-  if (!forceStore && cache.has(cacheKey)) {
+  if (!forceStore && !bypassCache && !req.query.nocache && cache.has(cacheKey)) {
     return cache.get(cacheKey)!;
   }
 
@@ -211,11 +225,12 @@ function toCsv(rows: Array<Record<string, any>>, headers?: string[]): string {
 for (const [name, _, routePath] of PAGES) {
   app.get(routePath, (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { cycle } = getCycle(req);
+      const { cycle, gantt } = getCycle(req);
       const queryStr = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
       const state = getScheduleState();
       res.render(name, {
         c: cycle,
+        gantt,
         pages: PAGES,
         active: name,
         query: queryStr,
@@ -223,7 +238,8 @@ for (const [name, _, routePath] of PAGES) {
         msg: req.query.msg as string || null,
         error: req.query.error as string || null,
         editId: req.query.editId as string || null,
-        state
+        state,
+        generateFigureSvg
       });
     } catch (err) {
       next(err);
@@ -460,6 +476,53 @@ app.post('/run', (req: Request, res: Response) => {
   res.redirect(referrer);
 });
 
+// Dynamic recalculation API endpoint (supports Threshold updates in real-time)
+app.post('/api/recalculate', (req: Request, res: Response) => {
+  try {
+    const rawThresh = req.body && req.body.threshold !== undefined ? req.body.threshold : req.query.threshold;
+    if (rawThresh === undefined || rawThresh === null || String(rawThresh).trim() === '') {
+      res.status(400).json({
+        success: false,
+        error: 'Threshold parameter is required. Please provide a decimal between 0.00 and 1.00 (e.g., 0.3, 0.5, 0.7, 0.9).'
+      });
+      return;
+    }
+
+    const parsedThresh = parseFloat(String(rawThresh));
+    if (isNaN(parsedThresh) || parsedThresh < 0.0 || parsedThresh > 1.0) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid threshold "${rawThresh}". Threshold must be a numerical value between 0.00 and 1.00.`
+      });
+      return;
+    }
+
+    const { dataDate, mode } = getCycleParams(req);
+    const threshold = parsedThresh;
+
+    // Purge cached entry to force fresh calculation pipeline execution
+    const cacheKey = `${dataDate || 'default'}_${mode}_${threshold}_false`;
+    cache.delete(cacheKey);
+
+    const { cycle, gantt } = runCycle(dataDate, mode, threshold, false);
+    cache.set(cacheKey, { cycle, gantt });
+
+    res.json({
+      success: true,
+      cycle,
+      gantt,
+      analytics: cycle.analytics,
+      kpis: cycle.kpis,
+      threshold
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      error: err.message || 'Recalculation error'
+    });
+  }
+});
+
 // JSON API
 app.get('/api/cycle', (req: Request, res: Response) => {
   const { cycle } = getCycle(req);
@@ -511,17 +574,21 @@ app.get('/reports/status', (_req: Request, res: Response) => {
   res.json({ pdf_exists: pdfExists, figures: figuresStatus });
 });
 
-app.get('/figures/:name.png', (req: Request, res: Response) => {
-  const name = req.params.name as string;
-  if (!FIGURES.includes(name)) {
+app.get(['/figures/:name.svg', '/figures/:name.png', '/figures/:name'], (req: Request, res: Response) => {
+  const rawParam = req.params.name as string;
+  const cleanName = rawParam.replace(/\.(svg|png)$/, '');
+  if (!FIGURES.includes(cleanName)) {
     res.status(404).send('Figure not found');
     return;
   }
-  const filePath = path.join(ROOT, `artifacts/figures/${name}.png`);
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('Figure not found');
+  try {
+    const { cycle, gantt } = getCycle(req);
+    const svg = generateFigureSvg(cleanName, cycle, gantt);
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(svg);
+  } catch (err: any) {
+    res.status(500).send(`Error generating chart: ${err.message || 'Unknown error'}`);
   }
 });
 

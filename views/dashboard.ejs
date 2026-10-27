@@ -2,65 +2,131 @@
 <% const k = c.kpis; %>
 <% const evm = c.analytics ? c.analytics.evm : null; %>
 <div class="grid g4">
-  <div class="card kpi"><div class="l">Baseline completion</div><div class="v"><%= k.baseline_completion %></div><div class="s"><%= k.baseline_duration_wd %> working days</div></div>
-  <div class="card kpi"><div class="l">Current forecast</div><div class="v"><%= k.current_completion %></div><div class="s"><%= k.current_duration_wd %> working days</div></div>
-  <div class="card kpi"><div class="l">Schedule variance</div><div class="v <%= k.schedule_variance_wd > 0 ? 'bad' : 'ok' %>"><%= (k.schedule_variance_wd > 0 ? '+' : '') + k.schedule_variance_wd %> wd</div><div class="s"><%= (k.calendar_slip_days > 0 ? '+' : '') + k.calendar_slip_days %> calendar days</div></div>
-  <div class="card kpi"><div class="l">Critical-path migration</div><div class="v"><%= k.critical_path_migrated ? 'YES' : 'No' %></div><div class="s">new: <%= k.newly_critical.join(', ') || 'none' %> · left: <%= k.left_critical.join(', ') || 'none' %></div></div>
-  <div class="card kpi"><div class="l">Progress (planned / actual)</div><div class="v"><%= k.planned_pct.toFixed(1) %> / <%= k.actual_pct.toFixed(1) %> %</div><div class="s">variance <%= (k.progress_variance_pct > 0 ? '+' : '') + k.progress_variance_pct.toFixed(1) %> pts</div></div>
-  <div class="card kpi"><div class="l">Critical / near-critical</div><div class="v"><%= k.critical_activities %> / <%= k.near_critical_count %></div><div class="s"><%= k.eroded_float_count %> with float erosion</div></div>
-  <div class="card kpi"><div class="l">At-risk activities</div><div class="v"><%= k.at_risk_count !== null ? k.at_risk_count : 'n/a' %></div><div class="s"><%= k.adapted_activities %> adapted · <%= k.recommendation_count %> recommendations</div></div>
-  <div class="card kpi"><div class="l">Composite risk index</div><div class="v"><%= c.composite_risk_index.toFixed(2) %></div><div class="s">RII provisional (no survey yet)</div></div>
+  <div class="card kpi"><div class="l">Baseline completion</div><div class="v" id="kpi-baseline-completion"><%= k.baseline_completion %></div><div class="s" id="kpi-baseline-duration"><%= k.baseline_duration_wd %> working days</div></div>
+  <div class="card kpi"><div class="l">Current forecast</div><div class="v" id="kpi-current-completion"><%= k.current_completion %></div><div class="s" id="kpi-current-duration"><%= k.current_duration_wd %> working days</div></div>
+  <div class="card kpi"><div class="l">Schedule variance</div><div class="v <%= k.schedule_variance_wd > 0 ? 'bad' : 'ok' %>" id="kpi-schedule-variance"><%= (k.schedule_variance_wd > 0 ? '+' : '') + k.schedule_variance_wd %> wd</div><div class="s" id="kpi-calendar-slip"><%= (k.calendar_slip_days > 0 ? '+' : '') + k.calendar_slip_days %> calendar days</div></div>
+  <div class="card kpi"><div class="l">Critical-path migration</div><div class="v" id="kpi-cpm-migration"><%= k.critical_path_migrated ? 'YES' : 'No' %></div><div class="s" id="kpi-cpm-details">new: <%= k.newly_critical.join(', ') || 'none' %> · left: <%= k.left_critical.join(', ') || 'none' %></div></div>
+  <div class="card kpi"><div class="l">Progress (planned / actual)</div><div class="v" id="kpi-progress"><%= k.planned_pct.toFixed(1) %> / <%= k.actual_pct.toFixed(1) %> %</div><div class="s" id="kpi-progress-variance">variance <%= (k.progress_variance_pct > 0 ? '+' : '') + k.progress_variance_pct.toFixed(1) %> pts</div></div>
+  <div class="card kpi"><div class="l">Critical / near-critical</div><div class="v" id="kpi-critical-counts"><%= k.critical_activities %> / <%= k.near_critical_count %></div><div class="s" id="kpi-float-erosion"><%= k.eroded_float_count %> with float erosion</div></div>
+  <div class="card kpi"><div class="l">At-risk activities</div><div class="v" id="kpi-at-risk-count"><%= k.at_risk_count !== null ? k.at_risk_count : 'n/a' %></div><div class="s" id="kpi-at-risk-sub"><%= k.adapted_activities %> adapted · <%= k.recommendation_count %> recommendations</div></div>
+  <div class="card kpi"><div class="l">Composite risk index</div><div class="v" id="kpi-risk-index"><%= c.composite_risk_index.toFixed(2) %></div><div class="s" id="kpi-risk-index-sub">RII provisional (no survey yet)</div></div>
 </div>
 
 <% if (evm) { %>
 <!-- Real Calculated Earned Value Management (EVM) KPI Block -->
-<div class="card" style="margin-top:14px;background:#fcfdfe;border:1px solid #cbd5e1">
+<div class="card" id="evm-card" style="margin-top:14px;background:#fcfdfe;border:1px solid #cbd5e1">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:8px">
       <b style="font-size:13px;color:#1e3a8a">📊 Earned Value Management (EVM) Calculations</b>
-      <span class="chip" style="font-size:10px;background:#e2e8f0;color:#334155"><%= evm.schedule_status %> · <%= evm.cost_status %></span>
+      <span class="chip" id="evm-status-chip" style="font-size:10px;background:#e2e8f0;color:#334155"><%= evm.schedule_status %> · <%= evm.cost_status %></span>
     </div>
-    <span class="note" style="font-size:11.5px">Calculated from activity cost &amp; progress weights at data date <%= c.data_date %></span>
+    <span class="note" id="evm-data-date-note" style="font-size:11.5px">Calculated from activity cost &amp; progress weights at data date <%= c.data_date %></span>
   </div>
   <div class="grid g4" style="gap:10px">
     <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
       <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Planned Value (PV)</div>
-      <div style="font-size:19px;font-weight:600" class="mono">₹<%= evm.planned_value.toLocaleString() %></div>
-      <div style="font-size:11px;color:var(--muted)">Budget (BAC): ₹<%= evm.budget_at_completion.toLocaleString() %></div>
+      <div style="font-size:19px;font-weight:600" class="mono" id="evm-pv">₹<%= evm.planned_value.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)" id="evm-bac">Budget (BAC): ₹<%= evm.budget_at_completion.toLocaleString() %></div>
     </div>
     <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
       <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Earned Value (EV)</div>
-      <div style="font-size:19px;font-weight:600;color:var(--blue)" class="mono">₹<%= evm.earned_value.toLocaleString() %></div>
-      <div style="font-size:11px;color:var(--muted)">SV: <b class="<%= evm.schedule_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.schedule_variance >= 0 ? '+' : '' %>₹<%= evm.schedule_variance.toLocaleString() %></b></div>
+      <div style="font-size:19px;font-weight:600;color:var(--blue)" class="mono" id="evm-ev">₹<%= evm.earned_value.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)" id="evm-sv">SV: <b class="<%= evm.schedule_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.schedule_variance >= 0 ? '+' : '' %>₹<%= evm.schedule_variance.toLocaleString() %></b></div>
     </div>
     <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
       <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Actual Cost (AC)</div>
-      <div style="font-size:19px;font-weight:600" class="mono">₹<%= evm.actual_cost.toLocaleString() %></div>
-      <div style="font-size:11px;color:var(--muted)">CV: <b class="<%= evm.cost_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.cost_variance >= 0 ? '+' : '' %>₹<%= evm.cost_variance.toLocaleString() %></b></div>
+      <div style="font-size:19px;font-weight:600" class="mono" id="evm-ac">₹<%= evm.actual_cost.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted)" id="evm-cv">CV: <b class="<%= evm.cost_variance >= 0 ? 'ok' : 'bad' %>"><%= evm.cost_variance >= 0 ? '+' : '' %>₹<%= evm.cost_variance.toLocaleString() %></b></div>
     </div>
     <div style="background:#fff;padding:8px 12px;border:1px solid var(--line);border-radius:2px">
       <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase">Performance Indices (SPI / CPI)</div>
       <div style="font-size:17px;font-weight:600;display:flex;gap:12px;align-items:baseline">
-        <span title="Schedule Performance Index">SPI: <b class="<%= evm.spi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.spi.toFixed(2) %></b></span>
-        <span title="Cost Performance Index">CPI: <b class="<%= evm.cpi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.cpi.toFixed(2) %></b></span>
+        <span id="evm-spi" title="Schedule Performance Index">SPI: <b class="<%= evm.spi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.spi.toFixed(2) %></b></span>
+        <span id="evm-cpi" title="Cost Performance Index">CPI: <b class="<%= evm.cpi >= 1.0 ? 'ok' : 'bad' %>"><%= evm.cpi.toFixed(2) %></b></span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">Estimate at finish: ₹<%= evm.estimate_at_completion.toLocaleString() %></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px" id="evm-eac">Estimate at finish: ₹<%= evm.estimate_at_completion.toLocaleString() %></div>
     </div>
   </div>
 </div>
 <% } %>
+
+<!-- REAL CALCULATED S-CURVE & SCHEDULE HORIZON -->
+<div class="card" style="margin-top:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <div>
+      <b style="font-size:13px;color:#1e3a8a">📈 Project Progress S-Curve (Planned Baseline vs Forecast Adapted)</b>
+      <div class="note" style="font-size:11.5px">Cumulative % progress over working-day horizon · Data date <%= c.data_date %></div>
+    </div>
+    <div style="display:flex;gap:14px;font-size:11.5px;align-items:center">
+      <span style="color:#1d4e89"><b>—</b> Planned (<%= c.kpis.planned_pct.toFixed(1) %>%)</span>
+      <span style="color:#fb8c00"><b>---</b> Forecast</span>
+      <span style="color:#d50000"><b>●</b> Actual (<%= c.kpis.actual_pct.toFixed(1) %>%)</span>
+      <a href="/progress<%= query ? '?' + query : '' %>" style="color:var(--blue);font-weight:600">Full Progress Breakdown →</a>
+    </div>
+  </div>
+  <div id="dashboard-scurve" style="border:1px solid #e2e8f0;border-radius:2px;overflow:hidden">
+    <%- generateFigureSvg('s_curve', c, gantt) %>
+  </div>
+</div>
 
 <!-- REAL CALCULATED CHARTS ROW 1 -->
 <div class="grid g2" style="margin-top:14px">
   <div class="card">
     <b>Activity Status Distribution</b>
     <div class="note" style="font-size:11px;margin-bottom:6px">Calculated task completion and schedule state (<%= c.project.activity_count %> activities)</div>
-    <div id="status-dist" style="margin-top:8px"></div>
+    <div id="status-dist" style="margin-top:8px">
+      <% if (c.analytics && c.analytics.status_distribution) { %>
+        <% const st = c.analytics.status_distribution; %>
+        <% const stItems = [
+          { label: 'Completed', value: st.completed, color: '#2e7d32' },
+          { label: 'In Progress', value: st.in_progress, color: '#1976d2' },
+          { label: 'Not Started', value: st.not_started, color: '#90a4ae' },
+          { label: 'Critical Path', value: st.critical, color: '#d50000' },
+          { label: 'Near Critical', value: st.near_critical, color: '#f57c00' },
+          { label: 'Delayed Tasks', value: st.delayed, color: '#7b1fa2' }
+        ]; %>
+        <% const mxSt = Math.max(1, ...stItems.map(i => i.value)); %>
+        <% const totalSt = stItems.reduce((s, i) => s + i.value, 0); %>
+        <% stItems.forEach(function(i) { %>
+          <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+            <span style="width:115px;font-size:11.5px;color:var(--ink);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;font-weight:500" title="<%= i.label %>"><%= i.label %></span>
+            <div style="flex:1;background:#eee7d6;height:16px;border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:<%= (i.value / mxSt) * 100 %>%;background:<%= i.color %>"></div>
+            </div>
+            <span class="mono" style="width:40px;text-align:right;font-size:12px;font-weight:600"><%= i.value %></span>
+            <span style="width:36px;font-size:11px;color:var(--muted);text-align:right"><%= totalSt > 0 ? Math.round((i.value / totalSt) * 100) : 0 %>%</span>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
   </div>
   <div class="card">
     <b>Risk Distribution (activities by band of P(delay))</b>
-    <div class="note" style="font-size:11px;margin-bottom:6px">Calculated delay probabilities from risk register</div>
-    <div id="risk-dist" style="margin-top:8px"></div>
+    <div class="note" id="risk-bands-legend" style="font-size:11px;margin-bottom:6px"><% if (c.analytics && c.analytics.risk_bands) { %>Threshold <%= c.threshold.toFixed(2) %> · Critical (<%= c.analytics.risk_bands.critical %>), High (<%= c.analytics.risk_bands.high %>), Med (<%= c.analytics.risk_bands.medium %>), Low (<%= c.analytics.risk_bands.low %>)<% } else { %>Calculated delay probabilities from risk register<% } %></div>
+    <div id="risk-dist" style="margin-top:8px">
+      <% if (c.analytics && c.analytics.risk_distribution) { %>
+        <% const rd = c.analytics.risk_distribution; %>
+        <% const rb = c.analytics.risk_bands; %>
+        <% const rItems = [
+          { label: rb ? 'LOW (' + rb.low + ')' : 'LOW', value: rd.low || 0, color: '#43a047' },
+          { label: rb ? 'MEDIUM (' + rb.medium + ')' : 'MEDIUM', value: rd.medium || 0, color: '#ffb300' },
+          { label: rb ? 'HIGH (' + rb.high + ')' : 'HIGH', value: rd.high || 0, color: '#fb8c00' },
+          { label: rb ? 'CRITICAL (' + rb.critical + ')' : 'CRITICAL', value: rd.critical || 0, color: '#e53935' }
+        ]; %>
+        <% const mxR = Math.max(1, ...rItems.map(i => i.value)); %>
+        <% const totalR = rItems.reduce((s, i) => s + i.value, 0); %>
+        <% rItems.forEach(function(i) { %>
+          <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+            <span style="width:115px;font-size:11.5px;color:var(--ink);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;font-weight:500" title="<%= i.label %>"><%= i.label %></span>
+            <div style="flex:1;background:#eee7d6;height:16px;border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:<%= (i.value / mxR) * 100 %>%;background:<%= i.color %>"></div>
+            </div>
+            <span class="mono" style="width:40px;text-align:right;font-size:12px;font-weight:600"><%= i.value %></span>
+            <span style="width:36px;font-size:11px;color:var(--muted);text-align:right"><%= totalR > 0 ? Math.round((i.value / totalR) * 100) : 0 %>%</span>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
   </div>
 </div>
 
@@ -72,7 +138,31 @@
       <a href="/progress<%= query ? '?' + query : '' %>" style="font-size:11.5px;color:var(--blue)">Details →</a>
     </div>
     <div class="note" style="font-size:11px;margin-bottom:6px">Calculated Planned vs Actual progress across configured floors</div>
-    <div id="floor-dist" style="margin-top:8px;max-height:260px;overflow-y:auto;padding-right:4px"></div>
+    <div id="floor-dist" style="margin-top:8px;max-height:260px;overflow-y:auto;padding-right:4px">
+      <% const flList = (c.analytics && c.analytics.floor_analytics && c.analytics.floor_analytics.length > 0) ? c.analytics.floor_analytics : (c.progress ? c.progress.floor_progress : []); %>
+      <% (flList || []).forEach(function(f) { %>
+        <div style="margin:7px 0;padding-bottom:5px;border-bottom:1px solid #f0ebe0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:2px;align-items:center">
+            <span style="font-weight:600;font-size:11.5px;color:var(--ink)"><%= f.floor %></span>
+            <span style="font-size:11px;color:var(--muted)"><%= f.total_activities %> tasks <%= f.critical_activities > 0 ? '<b style="color:var(--critical);margin-left:4px">(' + f.critical_activities + ' crit)</b>' : '' %></span>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 35px;align-items:center;gap:6px;margin:2px 0">
+            <span style="font-size:10.5px;color:#1d4e89">Plan:</span>
+            <div style="background:#e8edf5;height:8px;border-radius:2px;overflow:hidden">
+              <div style="background:#1d4e89;height:100%;width:<%= Math.min(100, Math.max(0, f.planned_pct)) %>%"></div>
+            </div>
+            <span class="mono" style="font-size:10.5px;text-align:right"><%= f.planned_pct.toFixed(0) %>%</span>
+          </div>
+          <div style="display:grid;grid-template-columns:40px 1fr 35px;align-items:center;gap:6px;margin:2px 0">
+            <span style="font-size:10.5px;color:<%= f.actual_pct < f.planned_pct ? '#e53935' : '#43a047' %>">Act:</span>
+            <div style="background:#e8edf5;height:8px;border-radius:2px;overflow:hidden">
+              <div style="background:<%= f.actual_pct < f.planned_pct ? '#e53935' : '#43a047' %>;height:100%;width:<%= Math.min(100, Math.max(0, f.actual_pct)) %>%"></div>
+            </div>
+            <span class="mono" style="font-size:10.5px;text-align:right"><%= f.actual_pct.toFixed(0) %>%</span>
+          </div>
+        </div>
+      <% }); %>
+    </div>
   </div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -80,11 +170,14 @@
       <span class="note" style="font-size:11px"><%= (c.forecast_trend || []).length %> points</span>
     </div>
     <div class="note" style="font-size:11px;margin-bottom:6px">History of schedule recalculations and adaptations</div>
+    <div id="forecast-trend-chart" style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:2px;overflow:hidden">
+      <%- generateFigureSvg('forecast_trend', c, gantt) %>
+    </div>
     <table style="margin-top:8px">
       <thead>
         <tr><th>Cycle</th><th>Data Date</th><th class="num">Forecast Finish</th></tr>
       </thead>
-      <tbody>
+      <tbody id="forecast-trend-tbody">
         <% (c.forecast_trend || []).forEach(function(p) { %>
         <tr><td><b><%= p.label %></b></td><td><%= p.data_date || '–' %></td><td class="num mono"><b><%= p.completion_date %></b></td></tr>
         <% }); %>
@@ -98,9 +191,11 @@
   <a href="/builder<%= query ? '?' + query : '' %>" class="btn alt" style="font-size:11.5px;padding:3px 8px">＋ Add Task / Open Schedule Builder →</a>
 </div>
 <% if (c.model) { %>
-<div class="scroll" style="max-height:none"><table><tr><th>ID</th><th>Activity</th><th>P(delay)</th><th>Risk</th><th>Pred. delay (d)</th><th>Injected (d)</th><th>Critical</th><th>Main drivers</th></tr>
+<div class="scroll" style="max-height:none"><table id="highest-risk-table"><thead><tr><th>ID</th><th>Activity</th><th>P(delay)</th><th>Risk</th><th>Pred. delay (d)</th><th>Injected (d)</th><th>Critical</th><th>Main drivers</th></tr></thead>
+<tbody id="highest-risk-tbody">
 <% const sortedActs = c.activities.slice().sort((a,b) => (b.p_delay || 0) - (a.p_delay || 0)).slice(0, 8); %>
-<% sortedActs.forEach(function(a) { %><tr><td><%= a.activity_id %></td><td><%= a.name %></td><td class="num"><%= a.p_delay !== null ? a.p_delay.toFixed(2) : '-' %></td><td><span class="chip <%= a.risk_band %>"><%= a.risk_band %></span></td><td class="num"><%= a.predicted_delay_days %></td><td class="num"><%= a.injected_days %></td><td><% if (a.critical) { %><span class="tag">critical</span><% } %></td><td><%= a.drivers %></td></tr><% }); %></table></div>
+<% sortedActs.forEach(function(a) { %><tr><td><%= a.activity_id %></td><td><%= a.name %></td><td class="num"><%= a.p_delay !== null ? a.p_delay.toFixed(2) : '-' %></td><td><span class="chip <%= a.risk_band %>"><%= a.risk_band %></span></td><td class="num"><%= a.predicted_delay_days %></td><td class="num"><%= a.injected_days %></td><td><% if (a.critical) { %><span class="tag">critical</span><% } %></td><td><%= a.drivers %></td></tr><% }); %>
+</tbody></table></div>
 <% } else { %>
 <p class="note">No ML model available. Run <code>adaptive-scheduler train</code>.</p>
 <% } %>

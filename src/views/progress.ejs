@@ -44,7 +44,9 @@
       <span style="color:#d50000"><b>●</b> Actual (<%= p.actual_pct.toFixed(1) %>%)</span>
     </div>
   </div>
-  <div id="scurve"></div>
+  <div id="scurve" style="border:1px solid #e2e8f0;border-radius:2px;overflow:hidden">
+    <%- generateFigureSvg('s_curve', c, gantt) %>
+  </div>
 </div>
 
 <% if (p.floor_progress && p.floor_progress.length > 0) { %>

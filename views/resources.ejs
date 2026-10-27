@@ -35,5 +35,7 @@
 <p>No over-allocation.</p>
 <% } %>
 <h2>Daily demand vs availability (red = over-allocated)</h2>
-<div id="demand" class="grid g2"></div>
+<div id="demand" style="border:1px solid #e2e8f0;border-radius:2px;overflow:hidden;background:#fff;margin-top:8px">
+  <%- generateFigureSvg('resource_histogram', c, gantt) %>
+</div>
 <%- include('partials/footer') %>
