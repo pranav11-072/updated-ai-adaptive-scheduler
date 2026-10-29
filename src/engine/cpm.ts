@@ -68,7 +68,12 @@ export class CPMEngine {
     this.order = resultOrder;
   }
 
-  public compute(durationOverrides?: Record<string, number>): CPMResult {
+  public compute(
+    durationOverrides?: Record<string, number>,
+    dataDateOffset?: number,
+    completedIds?: Set<string>,
+    inProgressProgress?: Record<string, number>
+  ): CPMResult {
     const cal = this.calendar;
     if (this.activities.length === 0) {
       return {
@@ -107,6 +112,25 @@ export class CPMEngine {
         else if (t === 'SF') c = es[p] + lag - d;
         s = Math.max(s, c);
       }
+
+      if (dataDateOffset !== undefined && dataDateOffset > 0) {
+        const isCompleted = completedIds ? completedIds.has(i) : false;
+        if (!isCompleted) {
+          const pct = inProgressProgress ? (inProgressProgress[i] || 0) : 0;
+          if (pct > 0 && pct < 100) {
+            // Activity in progress: remaining work must finish on or after dataDateOffset
+            const remDur = Math.max(1, Math.ceil(d * (1 - pct / 100) - 1e-9));
+            const minFinish = dataDateOffset + remDur;
+            if (s + d < minFinish) {
+              s = Math.max(s, minFinish - d);
+            }
+          } else {
+            // Activity not started: cannot start before dataDateOffset
+            s = Math.max(s, dataDateOffset);
+          }
+        }
+      }
+
       es[i] = s;
       ef[i] = s + d;
     }

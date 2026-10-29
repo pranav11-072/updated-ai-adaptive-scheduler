@@ -751,7 +751,8 @@ export function runCycle(
     threshold
   );
 
-  const adaptation = adapt(activities, engine, baseline, predictions, mode, threshold);
+  const dataDateOffset = calendar.elapsedDays(dd);
+  const adaptation = adapt(activities, engine, baseline, predictions, mode, threshold, true, dataDateOffset);
   const current = adaptation.adapted;
 
   const resDemand = computeDailyDemand(activities, current, project.resources);

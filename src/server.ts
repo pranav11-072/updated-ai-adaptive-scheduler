@@ -177,14 +177,18 @@ function getCycleParams(req: Request): { dataDate?: string; mode: 'expected' | '
   }
 
   let mode: 'expected' | 'conservative' = 'expected';
-  const rawMode = req.query.mode || (req.body && req.body.mode);
+  const rawMode = (req.body && req.body.mode) || req.query.mode;
   if (rawMode === 'conservative') {
     mode = 'conservative';
   }
 
-  const rawDate = typeof req.query.data_date === 'string' && req.query.data_date.trim().length > 0
+  const bodyDate = req.body && typeof req.body.data_date === 'string' && req.body.data_date.trim().length > 0
+    ? req.body.data_date.trim()
+    : undefined;
+  const queryDate = typeof req.query.data_date === 'string' && req.query.data_date.trim().length > 0
     ? req.query.data_date.trim()
-    : (req.body && typeof req.body.data_date === 'string' && req.body.data_date.trim().length > 0 ? req.body.data_date.trim() : undefined);
+    : undefined;
+  const rawDate = bodyDate || queryDate;
 
   return { dataDate: rawDate, mode, threshold };
 }

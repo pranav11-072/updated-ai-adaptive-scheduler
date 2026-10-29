@@ -38,13 +38,21 @@ export function adapt(
   predictions: Record<string, PredictionResult>,
   mode: 'expected' | 'conservative' = 'expected',
   threshold = 0.60,
-  includeObserved = true
+  includeObserved = true,
+  dataDateOffset = 0
 ): AdaptationResult {
   const injected: Record<string, InjectedDelay> = {};
+  const completedIds = new Set<string>();
+  const inProgressProgress: Record<string, number> = {};
 
   for (const a of activities) {
     const aid = a.activity_id;
     const started = a.percent_complete > 0;
+    if (a.percent_complete >= 100) {
+      completedIds.add(aid);
+    } else if (a.percent_complete > 0) {
+      inProgressProgress[aid] = a.percent_complete;
+    }
 
     if (includeObserved && started && a.actual_delay_days > 0) {
       injected[aid] = {
@@ -88,7 +96,7 @@ export function adapt(
     durations[a.activity_id] = a.duration + (injected[a.activity_id]?.days || 0);
   }
 
-  const adapted = engine.compute(durations);
+  const adapted = engine.compute(durations, dataDateOffset, completedIds, inProgressProgress);
 
   const baseCrit = new Set(baseline.critical_path);
   const adaptCrit = new Set(adapted.critical_path);

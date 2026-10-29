@@ -221,6 +221,15 @@
       if (el) el.innerHTML = html;
     };
 
+    // Update data date displays
+    if (data.data_date) {
+      const ddInput = document.getElementById('data-date-input');
+      if (ddInput && ddInput.value !== data.data_date) {
+        ddInput.value = data.data_date;
+      }
+      setEl('header-data-date-badge', `status date ${data.data_date}`);
+    }
+
     // 1. Dashboard KPI Cards
     if (k) {
       setEl('kpi-baseline-completion', k.baseline_completion || '–');
@@ -665,14 +674,14 @@
 
       const dataDateInput = document.getElementById('data-date-input') || paramsForm.querySelector('[name="data_date"]');
       const modeSelect = document.getElementById('mode-select') || paramsForm.querySelector('[name="mode"]');
-      const dataDate = dataDateInput ? dataDateInput.value : undefined;
+      const dataDate = dataDateInput && dataDateInput.value ? dataDateInput.value.trim() : undefined;
       const mode = modeSelect ? modeSelect.value : 'expected';
 
       if (applyBtn) {
         applyBtn.disabled = true;
         applyBtn.textContent = 'Calculating...';
       }
-      showFeedback('loading', `Recalculating project schedule, CPM, and risk bands for threshold ${thresh.toFixed(2)}...`);
+      showFeedback('loading', `Recalculating project schedule, CPM, and risk bands for data date ${dataDate || 'default'} and threshold ${thresh.toFixed(2)}...`);
 
       try {
         const res = await fetch('/api/recalculate', {
@@ -700,7 +709,7 @@
         // Update URL query params without reloading
         const url = new URL(window.location.href);
         url.searchParams.set('threshold', thresh.toString());
-        if (dataDate) url.searchParams.set('data_date', dataDate);
+        if (cycle.data_date) url.searchParams.set('data_date', cycle.data_date);
         if (mode) url.searchParams.set('mode', mode);
         window.history.replaceState({}, '', url.toString());
 
@@ -717,7 +726,7 @@
           // Refresh all SVG report figures
           document.querySelectorAll('img.fig').forEach(img => {
             const baseSrc = img.src.split('?')[0];
-            img.src = `${baseSrc}?threshold=${thresh}&t=${Date.now()}`;
+            img.src = `${baseSrc}?threshold=${thresh}&data_date=${cycle.data_date}&t=${Date.now()}`;
           });
         } else if (page === 'predictions') {
           const predRows = cycle.activities.slice().sort((a, b) => (b.p_delay || 0) - (a.p_delay || 0));
@@ -763,7 +772,7 @@
 
         showFeedback(
           'success',
-          `✓ <b>Recalculated successfully for threshold ${thresh.toFixed(2)}</b>: <b>${cycle.kpis.at_risk_count}</b> activities at risk, <b>${cycle.kpis.adapted_activities}</b> adapted, schedule variance <b>${cycle.kpis.schedule_variance_wd > 0 ? '+' : ''}${cycle.kpis.schedule_variance_wd} wd</b>, forecast completion <b>${cycle.kpis.current_completion}</b>.${bandText}`
+          `✓ <b>Recalculated successfully for Data Date ${cycle.data_date} & Threshold ${thresh.toFixed(2)}</b>: Forecast Completion <b>${cycle.kpis.current_completion}</b> (${cycle.kpis.current_duration_wd} wd, variance <b>${cycle.kpis.schedule_variance_wd > 0 ? '+' : ''}${cycle.kpis.schedule_variance_wd} wd</b>, <b>${cycle.kpis.calendar_slip_days > 0 ? '+' : ''}${cycle.kpis.calendar_slip_days} calendar days</b>), Progress <b>${(cycle.kpis.planned_pct || 0).toFixed(1)} / ${(cycle.kpis.actual_pct || 0).toFixed(1)}%</b>, <b>${cycle.kpis.at_risk_count}</b> activities at risk.${bandText}`
         );
       } catch (err) {
         console.error('[Recalculation error]', err);

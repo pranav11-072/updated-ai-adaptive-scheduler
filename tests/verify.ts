@@ -192,10 +192,65 @@ async function testThresholdCalculations() {
   console.log(`✓ Test 8: Real threshold calculations and risk band reclassification verified across [0.3, 0.5, 0.7, 0.9]`);
 }
 
-testAppRoutes().then(() => testThresholdCalculations()).then(() => {
-  console.log('=== ALL 8 TEST SUITES PASSED CLEANLY ===');
-  process.exit(0);
-}).catch((err) => {
-  console.error('Test suite failed:', err);
-  process.exit(1);
-});
+async function testDataDateCalculations() {
+  const d1 = runCycle('2026-09-07', 'expected', 0.60).cycle;
+  const d2 = runCycle('2026-10-15', 'expected', 0.60).cycle;
+  const d3 = runCycle('2026-12-01', 'expected', 0.60).cycle;
+
+  if (d1.kpis.current_completion !== '2027-03-29') {
+    throw new Error(`2026-09-07 expected 2027-03-29, got ${d1.kpis.current_completion}`);
+  }
+  if (d1.kpis.schedule_variance_wd !== 47) {
+    throw new Error(`2026-09-07 expected variance 47, got ${d1.kpis.schedule_variance_wd}`);
+  }
+  if (d2.kpis.current_completion <= d1.kpis.current_completion) {
+    throw new Error(`2026-10-15 did not push forecast completion: got ${d2.kpis.current_completion}`);
+  }
+  if (d2.kpis.schedule_variance_wd <= d1.kpis.schedule_variance_wd) {
+    throw new Error(`2026-10-15 variance did not increase: got ${d2.kpis.schedule_variance_wd}`);
+  }
+  if (d3.kpis.current_completion <= d2.kpis.current_completion) {
+    throw new Error(`2026-12-01 did not advance forecast completion: got ${d3.kpis.current_completion}`);
+  }
+  if (d2.kpis.planned_pct <= d1.kpis.planned_pct) {
+    throw new Error(`Planned progress did not advance: ${d1.kpis.planned_pct} vs ${d2.kpis.planned_pct}`);
+  }
+
+  console.log(`  - Data Date 2026-09-07: Forecast ${d1.kpis.current_completion} (${d1.kpis.current_duration_wd} wd), variance +${d1.kpis.schedule_variance_wd} wd, planned ${d1.kpis.planned_pct.toFixed(1)}%`);
+  console.log(`  - Data Date 2026-10-15: Forecast ${d2.kpis.current_completion} (${d2.kpis.current_duration_wd} wd), variance +${d2.kpis.schedule_variance_wd} wd, planned ${d2.kpis.planned_pct.toFixed(1)}%`);
+  console.log(`  - Data Date 2026-12-01: Forecast ${d3.kpis.current_completion} (${d3.kpis.current_duration_wd} wd), variance +${d3.kpis.schedule_variance_wd} wd, planned ${d3.kpis.planned_pct.toFixed(1)}%`);
+
+  // Test POST /api/recalculate with data_date
+  const server = app.listen(0);
+  const addr = server.address() as any;
+  try {
+    const res = await fetch(`http://127.0.0.1:${addr.port}/api/recalculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threshold: 0.60, data_date: '2026-10-15' })
+    });
+    const json = await res.json() as any;
+    if (!json.success || json.cycle.data_date !== '2026-10-15') {
+      throw new Error(`API recalculate failed to honor data_date: ${JSON.stringify(json)}`);
+    }
+    if (json.cycle.kpis.current_completion !== d2.kpis.current_completion) {
+      throw new Error(`API recalculate mismatch: ${json.cycle.kpis.current_completion} vs ${d2.kpis.current_completion}`);
+    }
+  } finally {
+    server.close();
+  }
+
+  console.log(`✓ Test 9: Real Data Date schedule recalculation & API endpoint verified across multiple status dates`);
+}
+
+testAppRoutes()
+  .then(() => testThresholdCalculations())
+  .then(() => testDataDateCalculations())
+  .then(() => {
+    console.log('=== ALL 9 TEST SUITES PASSED CLEANLY ===');
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('Test suite failed:', err);
+    process.exit(1);
+  });
